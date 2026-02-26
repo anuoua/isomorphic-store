@@ -1,11 +1,11 @@
-import { type IStorageAdapter, type DataStoreEvent } from '../types';
+import { type IStorageAdapter, type IsomorphicStoreEvent } from '../types';
 import { SerializationError, StorageQuotaExceededError } from '../errors';
 
 /**
  * sessionStorage 适配器
  */
 export class SessionStorageAdapter<T = unknown> implements IStorageAdapter<T> {
-  private externalChangeCallback?: (event: DataStoreEvent<T>) => void;
+  private externalChangeCallback?: (event: IsomorphicStoreEvent<T>) => void;
 
   constructor() {
     // 监听其他标签页的 storage 事件
@@ -79,7 +79,7 @@ export class SessionStorageAdapter<T = unknown> implements IStorageAdapter<T> {
     return window.sessionStorage.getItem(key) !== null;
   }
 
-  setExternalChangeCallback(callback: (event: DataStoreEvent<T>) => void): void {
+  setExternalChangeCallback(callback: (event: IsomorphicStoreEvent<T>) => void): void {
     this.externalChangeCallback = callback;
   }
 }

@@ -1,8 +1,8 @@
-# DataStore 设计文档
+# IsomorphicStore 设计文档
 
 ## 概述
 
-`DataStore` 是一个浏览器数据存储库，支持多种生命周期的数据存储。用户在创建 `DataStore` 实例时指定存储策略，之后该实例会自动使用该策略进行所有数据操作。
+`IsomorphicStore` 是一个浏览器数据存储库，支持多种生命周期的数据存储。用户在创建 `IsomorphicStore` 实例时指定存储策略，之后该实例会自动使用该策略进行所有数据操作。
 
 ## 核心概念
 
@@ -20,10 +20,10 @@
 
 ### 核心原则
 
-1. **策略绑定**：每个 `DataStore` 实例在构造时指定一个策略，此后该实例的所有操作都使用此策略。
-2. **命名空间隔离**：每个 `DataStore` 占有独立的命名空间，防止不同模块数据冲突。
-3. **冲突检测**：同一命名空间不能被多个 `DataStore` 占用，否则抛出错误。
-4. **跨存储协调**：若业务需要跨不同存储策略操作，由用户创建多个 `DataStore` 实例并手动协调。
+1. **策略绑定**：每个 `IsomorphicStore` 实例在构造时指定一个策略，此后该实例的所有操作都使用此策略。
+2. **命名空间隔离**：每个 `IsomorphicStore` 占有独立的命名空间，防止不同模块数据冲突。
+3. **冲突检测**：同一命名空间不能被多个 `IsomorphicStore` 占用，否则抛出错误。
+4. **跨存储协调**：若业务需要跨不同存储策略操作，由用户创建多个 `IsomorphicStore` 实例并手动协调。
 5. **自动初始化**：构造时自动初始化存储位置，确保数据结构完整。
 
 ## 数据约束
@@ -52,30 +52,30 @@ enum StorageStrategy {
 }
 ```
 
-### 枚举：`DataStoreEventType`
+### 枚举：`IsomorphicStoreEventType`
 
 ```typescript
-enum DataStoreEventType {
+enum IsomorphicStoreEventType {
   SET = "set", // 设置或更新数据
   REMOVE = "remove", // 删除数据
   CLEAR = "clear", // 清空命名空间
 }
 ```
 
-### 接口：`DataStoreEvent`
+### 接口：`IsomorphicStoreEvent`
 
 ```typescript
-interface DataStoreEvent<T = unknown> {
-  type: DataStoreEventType;
+interface IsomorphicStoreEvent<T = unknown> {
+  type: IsomorphicStoreEventType;
   key?: string; // SET/REMOVE 时存在，CLEAR 时无
   oldValue?: T; // SET/REMOVE 时存在
   newValue?: T; // SET 时存在，REMOVE 时为 undefined
   namespace: string; // 命名空间
   timestamp: number; // 事件发生时间戳（毫秒）
-  source: DataStore; // 事件来源
+  source: IsomorphicStore; // 事件来源
 }
 
-type EventListener<T = unknown> = (event: DataStoreEvent<T>) => void;
+type EventListener<T = unknown> = (event: IsomorphicStoreEvent<T>) => void;
 type Unsubscribe = () => void;
 ```
 
@@ -98,10 +98,10 @@ interface DataWithVersion<T = unknown> {
 }
 ```
 
-### 接口：`DataStoreOptions`
+### 接口：`IsomorphicStoreOptions`
 
 ```typescript
-interface DataStoreOptions<T = unknown> {
+interface IsomorphicStoreOptions<T = unknown> {
   version?: number; // 当前版本（默认为 1）
   migrations?: MigrationRule<T>[]; // 迁移规则
 }
@@ -118,19 +118,19 @@ interface IStorageAdapter<T = unknown> {
   hasKey(key: string): boolean;
   // 可选：Adapter 可注册外部变化回调
   setExternalChangeCallback?(
-    callback: (event: DataStoreEvent<T>) => void,
+    callback: (event: IsomorphicStoreEvent<T>) => void,
   ): void;
 }
 ```
 
-### 主类：`DataStore`
+### 主类：`IsomorphicStore`
 
 ```typescript
-class DataStore<T = unknown> {
+class IsomorphicStore<T = unknown> {
   constructor(
     namespace: string,
     strategy: StorageStrategy,
-    options?: DataStoreOptions<T>,
+    options?: IsomorphicStoreOptions<T>,
   );
 
   // 基础操作
@@ -157,7 +157,7 @@ class DataStore<T = unknown> {
 constructor(
   namespace: string,
   strategy: StorageStrategy,
-  options?: DataStoreOptions<T>
+  options?: IsomorphicStoreOptions<T>
 )
 ```
 
@@ -208,7 +208,7 @@ constructor(
 
 **`clear(): void`**
 
-- 清空该 DataStore 的整个命名空间
+- 清空该 IsomorphicStore 的整个命名空间
 
 **`hasKey(key: string): boolean`**
 
@@ -222,7 +222,7 @@ constructor(
 
 **`on(listener: EventListener<T>): Unsubscribe`**
 
-- 监听此 DataStore 的所有数据变化
+- 监听此 IsomorphicStore 的所有数据变化
 - 每次 set/remove/clear 操作都会触发
 - 返回取消订阅函数
 
@@ -261,8 +261,8 @@ constructor(
 **外部变化通知**：
 
 - 监听 `storage` 事件，捕捉其他标签页对 localStorage 的修改
-- 调用 `setExternalChangeCallback` 注册的回调，通知 DataStore 发出事件
-- 同标签页内的修改由 DataStore 直接发出事件
+- 调用 `setExternalChangeCallback` 注册的回调，通知 IsomorphicStore 发出事件
+- 同标签页内的修改由 IsomorphicStore 直接发出事件
 
 #### `SessionStorageAdapter`
 
@@ -271,8 +271,8 @@ constructor(
 **外部变化通知**：
 
 - 监听 `storage` 事件，捕捉同源其他标签页对 sessionStorage 的修改
-- 调用 `setExternalChangeCallback` 注册的回调，通知 DataStore 发出事件
-- 同标签页内的修改由 DataStore 直接发出事件
+- 调用 `setExternalChangeCallback` 注册的回调，通知 IsomorphicStore 发出事件
+- 同标签页内的修改由 IsomorphicStore 直接发出事件
 
 #### `MemoryStorageAdapter`
 
@@ -306,7 +306,7 @@ constructor(
 **特殊处理**：
 
 - 监听 `popstate` 事件，当用户后退/前进时读取新的 history state
-- 若 history state 中的数据改变，调用 `setExternalChangeCallback` 通知 DataStore 发出事件
+- 若 history state 中的数据改变，调用 `setExternalChangeCallback` 通知 IsomorphicStore 发出事件
 
 #### `NavigationStateAdapter`
 
@@ -339,7 +339,7 @@ constructor(
 **特殊处理**：
 
 - 监听 `navigate` 事件，当用户导航时检测新 entry 的 state
-- 若 entry state 中的数据改变，调用 `setExternalChangeCallback` 通知 DataStore 发出事件
+- 若 entry state 中的数据改变，调用 `setExternalChangeCallback` 通知 IsomorphicStore 发出事件
 
 **注意**：
 
@@ -389,7 +389,7 @@ const namespaceRegistry = new Map<string, StorageStrategy>();
 
 **`NamespaceConflictError`**
 
-- 当试图创建同名 namespace 的 DataStore 时抛出
+- 当试图创建同名 namespace 的 IsomorphicStore 时抛出
 - 消息示例：`Namespace "app.user" is already registered with strategy LOCAL`
 
 **`SerializationError`**
@@ -413,10 +413,10 @@ const namespaceRegistry = new Map<string, StorageStrategy>();
 
 ```typescript
 // 创建多个独立的 Store，各使用不同策略
-const userPrefs = new DataStore("app.prefs", StorageStrategy.LOCAL);
-const sessionData = new DataStore("app.session", StorageStrategy.SESSION);
-const cache = new DataStore("app.cache", StorageStrategy.MEMORY);
-const navState = new DataStore("app.nav", StorageStrategy.HISTORY);
+const userPrefs = new IsomorphicStore("app.prefs", StorageStrategy.LOCAL);
+const sessionData = new IsomorphicStore("app.session", StorageStrategy.SESSION);
+const cache = new IsomorphicStore("app.cache", StorageStrategy.MEMORY);
+const navState = new IsomorphicStore("app.nav", StorageStrategy.HISTORY);
 
 // 每个 Store 独立操作
 userPrefs.set("theme", "dark");
@@ -433,8 +433,8 @@ const step = navState.get("formStep"); // 2
 ### 跨存储协调
 
 ```typescript
-const local = new DataStore("app.data", StorageStrategy.LOCAL);
-const memory = new DataStore("app.temp", StorageStrategy.MEMORY);
+const local = new IsomorphicStore("app.data", StorageStrategy.LOCAL);
+const memory = new IsomorphicStore("app.temp", StorageStrategy.MEMORY);
 
 // 场景：初始化时从 localStorage 加载到内存
 const savedData = local.get("config");
@@ -468,7 +468,7 @@ const migrations: MigrationRule<UserSettings>[] = [
 ];
 
 // 创建版本化 Store
-const settings = new DataStore<UserSettings>(
+const settings = new IsomorphicStore<UserSettings>(
   "app.settings",
   StorageStrategy.LOCAL,
   {
@@ -485,7 +485,7 @@ const data = settings.get("user"); // 自动迁移旧版本数据
 ### 事件监听
 
 ```typescript
-const store = new DataStore("app.user", StorageStrategy.SESSION);
+const store = new IsomorphicStore("app.user", StorageStrategy.SESSION);
 
 // 监听所有变化
 const unsub = store.on((event) => {
@@ -514,8 +514,8 @@ unsub(); // 停止监听所有变化
 
 ```typescript
 try {
-  const store1 = new DataStore("app.user", StorageStrategy.LOCAL);
-  const store2 = new DataStore("app.user", StorageStrategy.SESSION);
+  const store1 = new IsomorphicStore("app.user", StorageStrategy.LOCAL);
+  const store2 = new IsomorphicStore("app.user", StorageStrategy.SESSION);
   // 抛出 NamespaceConflictError
 } catch (e) {
   if (e instanceof NamespaceConflictError) {
@@ -540,20 +540,20 @@ try {
 
 ### MEMORY 生命周期
 
-- **何时创建**：DataStore 实例创建时
+- **何时创建**：IsomorphicStore 实例创建时
 - **何时销毁**：页面刷新或应用卸载时
 - **场景**：计算缓存、UI 状态、临时数据处理
 
 ### HISTORY 生命周期
 
-- **何时创建**：DataStore 构造时，依附于当前历史条目
+- **何时创建**：IsomorphicStore 构造时，依附于当前历史条目
 - **何时销毁**：用户离开该历史条目（前进/后退）
 - **保留机制**：用户通过浏览器导航回到该条目时，数据恢复
 - **场景**：表单状态、滚动位置、页面内导航记录
 
 ### NAVIGATION 生命周期
 
-- **何时创建**：DataStore 构造时，依附于当前导航条目
+- **何时创建**：IsomorphicStore 构造时，依附于当前导航条目
 - **何时销毁**：导航至新页面或条目
 - **保留机制**：用户通过浏览器导航回到该条目时，数据恢复
 - **场景**：新式 Web App 的路由状态、过渡状态
@@ -562,7 +562,7 @@ try {
 
 ```
 ┌─────────────────────────────────────┐
-│        DataStore<T> (主类)          │
+│        IsomorphicStore<T> (主类)          │
 │  - namespace: string                │
 │  - adapter: IStorageAdapter         │
 │  + set/get/remove/clear()           │
@@ -596,16 +596,16 @@ try {
 
 | 变化来源                        | 如何监听                   | 发出事件                          |
 | ------------------------------- | -------------------------- | --------------------------------- |
-| 同标签页 set/remove/clear       | DataStore 方法调用         | DataStore 主动 emit               |
-| 其他标签页修改（LOCAL/SESSION） | Adapter 监听 storage 事件  | Adapter 通知 → DataStore emit     |
-| 浏览器导航后退（HISTORY）       | Adapter 监听 popstate 事件 | Adapter 检测变化 → DataStore emit |
-| 导航至新条目（NAVIGATION）      | Adapter 监听 navigate 事件 | Adapter 检测变化 → DataStore emit |
+| 同标签页 set/remove/clear       | IsomorphicStore 方法调用         | IsomorphicStore 主动 emit               |
+| 其他标签页修改（LOCAL/SESSION） | Adapter 监听 storage 事件  | Adapter 通知 → IsomorphicStore emit     |
+| 浏览器导航后退（HISTORY）       | Adapter 监听 popstate 事件 | Adapter 检测变化 → IsomorphicStore emit |
+| 导航至新条目（NAVIGATION）      | Adapter 监听 navigate 事件 | Adapter 检测变化 → IsomorphicStore emit |
 
 ### 设计要点
 
 1. **Adapter 无配置**：Adapter 仅做数据操作，不涉及事件逻辑
-2. **DataStore 主控**：所有事件由 DataStore 发出，保证事件流统一
-3. **可选通知**：Adapter 通过可选的 `setExternalChangeCallback` 与 DataStore 通信
+2. **IsomorphicStore 主控**：所有事件由 IsomorphicStore 发出，保证事件流统一
+3. **可选通知**：Adapter 通过可选的 `setExternalChangeCallback` 与 IsomorphicStore 通信
 4. **监听粒度**：支持全局、key、一次性三种监听方式
 
 ## 扩展考虑
@@ -617,4 +617,4 @@ try {
 
 ## 总结
 
-`DataStore` 通过**策略绑定**、**命名空间隔离**、**自动初始化**的设计，提供了清晰、安全、灵活的浏览器存储解决方案。用户可以根据数据的生命周期自由选择合适的存储策略，同时库内部保证数据不冲突、初始化完整。
+`IsomorphicStore` 通过**策略绑定**、**命名空间隔离**、**自动初始化**的设计，提供了清晰、安全、灵活的浏览器存储解决方案。用户可以根据数据的生命周期自由选择合适的存储策略，同时库内部保证数据不冲突、初始化完整。

@@ -4,13 +4,13 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
-  DataStore,
+  IsomorphicStore,
   StorageStrategy,
   globalNamespaceRegistry,
   StorageAdapterFactory
 } from '../src';
 
-describe('DataStore - Integration Tests', () => {
+describe('IsomorphicStore - Integration Tests', () => {
   beforeEach(() => {
     if (typeof window !== 'undefined') {
       if (window.localStorage) {
@@ -29,7 +29,7 @@ describe('DataStore - Integration Tests', () => {
 
   describe('Real-world scenarios', () => {
     it('should handle user preferences workflow', () => {
-      const store = new DataStore<{ theme: string; fontSize: number }>(
+      const store = new IsomorphicStore<{ theme: string; fontSize: number }>(
         'app.prefs',
         StorageStrategy.LOCAL
       );
@@ -50,7 +50,7 @@ describe('DataStore - Integration Tests', () => {
     });
 
     it('should handle session data workflow', () => {
-      const sessionStore = new DataStore<{ userId: number; token: string }>(
+      const sessionStore = new IsomorphicStore<{ userId: number; token: string }>(
         'app.session',
         StorageStrategy.SESSION
       );
@@ -70,8 +70,8 @@ describe('DataStore - Integration Tests', () => {
     });
 
     it('should handle multi-store coordination', () => {
-      const localStorage = new DataStore('app.local', StorageStrategy.LOCAL);
-      const memoryStore = new DataStore('app.memory', StorageStrategy.MEMORY);
+      const localStorage = new IsomorphicStore('app.local', StorageStrategy.LOCAL);
+      const memoryStore = new IsomorphicStore('app.memory', StorageStrategy.MEMORY);
 
       // Initialize memory from localStorage
       type ConfigType = { apiUrl: string };
@@ -101,7 +101,7 @@ describe('DataStore - Integration Tests', () => {
 
     it('should handle data migration on app update', () => {
       // Version 1: Old format
-      const storeV1 = new DataStore<any>('app.data', StorageStrategy.LOCAL, {
+      const storeV1 = new IsomorphicStore<any>('app.data', StorageStrategy.LOCAL, {
         version: 1
       });
 
@@ -112,7 +112,7 @@ describe('DataStore - Integration Tests', () => {
       storeV1.destroy();
 
       // Version 2: New format with migration
-      const storeV2 = new DataStore<any>('app.data', StorageStrategy.LOCAL, {
+      const storeV2 = new IsomorphicStore<any>('app.data', StorageStrategy.LOCAL, {
         version: 2,
         migrations: [
           {
@@ -138,7 +138,7 @@ describe('DataStore - Integration Tests', () => {
     });
 
     it('should handle caching workflow', () => {
-      const cache = new DataStore<{ data: string; timestamp: number }>(
+      const cache = new IsomorphicStore<{ data: string; timestamp: number }>(
         'app.cache',
         StorageStrategy.MEMORY
       );
@@ -167,7 +167,7 @@ describe('DataStore - Integration Tests', () => {
     });
 
     it('should handle form state recovery', () => {
-      const historyStore = new DataStore<{ step: number; data: Record<string, any> }>(
+      const historyStore = new IsomorphicStore<{ step: number; data: Record<string, any> }>(
         'app.form',
         StorageStrategy.HISTORY
       );
@@ -209,7 +209,7 @@ describe('DataStore - Integration Tests', () => {
       for (const strategy of strategies) {
         globalNamespaceRegistry.clear();
 
-        const store = new DataStore('factory:test', strategy);
+        const store = new IsomorphicStore('factory:test', strategy);
         expect(store).toBeDefined();
         store.destroy();
       }
@@ -218,8 +218,8 @@ describe('DataStore - Integration Tests', () => {
 
   describe('Cross-instance communication', () => {
     it('should support listener-based updates across instances', () => {
-      const store1 = new DataStore('shared:data', StorageStrategy.LOCAL);
-      const store2 = new DataStore('different:namespace', StorageStrategy.LOCAL);
+      const store1 = new IsomorphicStore('shared:data', StorageStrategy.LOCAL);
+      const store2 = new IsomorphicStore('different:namespace', StorageStrategy.LOCAL);
 
       const store1Events: any[] = [];
       store1.on((event) => {
@@ -242,7 +242,7 @@ describe('DataStore - Integration Tests', () => {
 
   describe('Performance considerations', () => {
     it('should efficiently handle large numbers of keys', () => {
-      const store = new DataStore('perf:test', StorageStrategy.MEMORY);
+      const store = new IsomorphicStore('perf:test', StorageStrategy.MEMORY);
 
       const startTime = performance.now();
 
@@ -273,7 +273,7 @@ describe('DataStore - Integration Tests', () => {
     });
 
     it('should handle large data objects efficiently', () => {
-      const store = new DataStore('perf:large', StorageStrategy.LOCAL);
+      const store = new IsomorphicStore('perf:large', StorageStrategy.LOCAL);
 
       const largeData = {
         items: Array(100)
@@ -304,7 +304,7 @@ describe('DataStore - Integration Tests', () => {
 
   describe('Destroy and cleanup', () => {
     it('should properly cleanup resources on destroy', () => {
-      const store = new DataStore('cleanup:test', StorageStrategy.MEMORY);
+      const store = new IsomorphicStore('cleanup:test', StorageStrategy.MEMORY);
 
       const listener = () => {};
       store.on(listener);
@@ -316,12 +316,12 @@ describe('DataStore - Integration Tests', () => {
       expect(globalNamespaceRegistry.has('cleanup:test')).toBe(false);
 
       // Should be able to recreate store with same namespace
-      const store2 = new DataStore('cleanup:test', StorageStrategy.MEMORY);
+      const store2 = new IsomorphicStore('cleanup:test', StorageStrategy.MEMORY);
       store2.destroy();
     });
 
     it('should not trigger listeners after destroy', () => {
-      const store = new DataStore('cleanup:test2', StorageStrategy.MEMORY);
+      const store = new IsomorphicStore('cleanup:test2', StorageStrategy.MEMORY);
 
       const listener = () => {
         throw new Error('Should not be called');
@@ -339,7 +339,7 @@ describe('DataStore - Integration Tests', () => {
 
   describe('Edge cases', () => {
     it('should handle rapid sequential operations', () => {
-      const store = new DataStore('rapid:test', StorageStrategy.MEMORY);
+      const store = new IsomorphicStore('rapid:test', StorageStrategy.MEMORY);
 
       // Rapid set operations
       for (let i = 0; i < 100; i++) {
@@ -354,9 +354,9 @@ describe('DataStore - Integration Tests', () => {
 
     it('should handle concurrent-like operations', () => {
       const stores = [
-        new DataStore('concurrent:1', StorageStrategy.MEMORY),
-        new DataStore('concurrent:2', StorageStrategy.MEMORY),
-        new DataStore('concurrent:3', StorageStrategy.MEMORY)
+        new IsomorphicStore('concurrent:1', StorageStrategy.MEMORY),
+        new IsomorphicStore('concurrent:2', StorageStrategy.MEMORY),
+        new IsomorphicStore('concurrent:3', StorageStrategy.MEMORY)
       ];
 
       // Simulate concurrent operations
@@ -372,7 +372,7 @@ describe('DataStore - Integration Tests', () => {
     });
 
     it('should handle very long key names', () => {
-      const store = new DataStore('long:keys', StorageStrategy.LOCAL);
+      const store = new IsomorphicStore('long:keys', StorageStrategy.LOCAL);
 
       const longKey = 'a'.repeat(1000);
       store.set(longKey, 'value');

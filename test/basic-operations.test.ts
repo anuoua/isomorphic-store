@@ -3,10 +3,10 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { DataStore, StorageStrategy, globalNamespaceRegistry } from '../src';
+import { IsomorphicStore, StorageStrategy, globalNamespaceRegistry } from '../src';
 
-describe('DataStore - Basic Operations', () => {
-  let store: DataStore<any>;
+describe('IsomorphicStore - Basic Operations', () => {
+  let store: IsomorphicStore<any>;
 
   beforeEach(() => {
     // 清空所有存储
@@ -29,7 +29,7 @@ describe('DataStore - Basic Operations', () => {
 
   describe('MEMORY Strategy', () => {
     beforeEach(() => {
-      store = new DataStore('test:memory', StorageStrategy.MEMORY);
+      store = new IsomorphicStore('test:memory', StorageStrategy.MEMORY);
     });
 
     it('should set and get data', () => {
@@ -107,7 +107,7 @@ describe('DataStore - Basic Operations', () => {
 
   describe('LOCAL Strategy', () => {
     beforeEach(() => {
-      store = new DataStore('test:local', StorageStrategy.LOCAL);
+      store = new IsomorphicStore('test:local', StorageStrategy.LOCAL);
     });
 
     it('should set and get data from localStorage', () => {
@@ -122,7 +122,7 @@ describe('DataStore - Basic Operations', () => {
       store.set('key1', 'value1');
       store.destroy();
 
-      const newStore = new DataStore('test:local', StorageStrategy.LOCAL);
+      const newStore = new IsomorphicStore('test:local', StorageStrategy.LOCAL);
       expect(newStore.get('key1')).toBe('value1');
       newStore.destroy();
     });
@@ -142,7 +142,7 @@ describe('DataStore - Basic Operations', () => {
 
   describe('SESSION Strategy', () => {
     beforeEach(() => {
-      store = new DataStore('test:session', StorageStrategy.SESSION);
+      store = new IsomorphicStore('test:session', StorageStrategy.SESSION);
     });
 
     it('should set and get data from sessionStorage', () => {
@@ -166,7 +166,7 @@ describe('DataStore - Basic Operations', () => {
 
   describe('HISTORY Strategy', () => {
     beforeEach(() => {
-      store = new DataStore('test:history', StorageStrategy.HISTORY);
+      store = new IsomorphicStore('test:history', StorageStrategy.HISTORY);
     });
 
     it('should set and get data from history.state', () => {
@@ -188,8 +188,8 @@ describe('DataStore - Basic Operations', () => {
 
   describe('Namespace isolation', () => {
     it('should isolate data between different namespaces', () => {
-      const store1 = new DataStore('namespace1', StorageStrategy.MEMORY);
-      const store2 = new DataStore('namespace2', StorageStrategy.MEMORY);
+      const store1 = new IsomorphicStore('namespace1', StorageStrategy.MEMORY);
+      const store2 = new IsomorphicStore('namespace2', StorageStrategy.MEMORY);
 
       store1.set('key', 'value1');
       store2.set('key', 'value2');
@@ -202,10 +202,10 @@ describe('DataStore - Basic Operations', () => {
     });
 
     it('should throw error when creating store with existing namespace', () => {
-      const store1 = new DataStore('namespace', StorageStrategy.MEMORY);
+      const store1 = new IsomorphicStore('namespace', StorageStrategy.MEMORY);
 
       expect(() => {
-        new DataStore('namespace', StorageStrategy.SESSION);
+        new IsomorphicStore('namespace', StorageStrategy.SESSION);
       }).toThrow('already registered');
 
       store1.destroy();
@@ -214,7 +214,7 @@ describe('DataStore - Basic Operations', () => {
 
   describe('Type safety', () => {
     beforeEach(() => {
-      store = new DataStore<{ name: string; age: number }>('test:typed', StorageStrategy.MEMORY);
+      store = new IsomorphicStore<{ name: string; age: number }>('test:typed', StorageStrategy.MEMORY);
     });
 
     it('should support typed data', () => {
@@ -229,7 +229,7 @@ describe('DataStore - Basic Operations', () => {
 
   describe('Edge cases', () => {
     beforeEach(() => {
-      store = new DataStore('test:edge', StorageStrategy.MEMORY);
+      store = new IsomorphicStore('test:edge', StorageStrategy.MEMORY);
     });
 
     it('should handle empty strings', () => {

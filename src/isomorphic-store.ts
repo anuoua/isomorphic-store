@@ -1,10 +1,10 @@
 import {
   StorageStrategy,
-  DataStoreEventType,
-  type DataStoreEvent,
+  IsomorphicStoreEventType,
+  type IsomorphicStoreEvent,
   type EventListener,
   type Unsubscribe,
-  type DataStoreOptions,
+  type IsomorphicStoreOptions,
   type DataWithVersion,
   type IStorageAdapter
 } from './types';
@@ -13,10 +13,10 @@ import { StorageAdapterFactory } from './factory';
 import { MigrationError } from './errors';
 
 /**
- * DataStore 主类
+ * IsomorphicStore 主类
  * 提供类型安全的浏览器数据存储
  */
-export class DataStore<T = unknown> {
+export class IsomorphicStore<T = unknown> {
   private namespace: string;
   private strategy: StorageStrategy;
   private adapter: IStorageAdapter<DataWithVersion<T>>;
@@ -30,7 +30,7 @@ export class DataStore<T = unknown> {
   constructor(
     namespace: string,
     strategy: StorageStrategy,
-    options?: DataStoreOptions<T>
+    options?: IsomorphicStoreOptions<T>
   ) {
     this.namespace = namespace;
     this.strategy = strategy;
@@ -44,7 +44,7 @@ export class DataStore<T = unknown> {
 
     // 设置外部变化回调
     if (this.adapter.setExternalChangeCallback) {
-      this.adapter.setExternalChangeCallback((event: DataStoreEvent<DataWithVersion<T>>) => {
+      this.adapter.setExternalChangeCallback((event: IsomorphicStoreEvent<DataWithVersion<T>>) => {
         this.handleExternalChange(event);
       });
     }
@@ -62,14 +62,14 @@ export class DataStore<T = unknown> {
   /**
    * 处理外部变化事件
    */
-  private handleExternalChange(event: DataStoreEvent<DataWithVersion<T>>): void {
+  private handleExternalChange(event: IsomorphicStoreEvent<DataWithVersion<T>>): void {
     if (!event.key) {
       return;
     }
 
     // 发出事件
     this.emitEvent({
-      type: event.type as DataStoreEventType,
+      type: event.type as IsomorphicStoreEventType,
       key: event.key,
       oldValue: event.oldValue?.data,
       newValue: event.newValue?.data,
@@ -82,7 +82,7 @@ export class DataStore<T = unknown> {
   /**
    * 发出事件
    */
-  private emitEvent(event: DataStoreEvent<T>): void {
+  private emitEvent(event: IsomorphicStoreEvent<T>): void {
     // 发出全局事件
     for (const listener of this.globalListeners) {
       listener(event);
@@ -170,7 +170,7 @@ export class DataStore<T = unknown> {
 
     // 发出 SET 事件
     this.emitEvent({
-      type: DataStoreEventType.SET,
+      type: IsomorphicStoreEventType.SET,
       key,
       oldValue,
       newValue: value,
@@ -217,7 +217,7 @@ export class DataStore<T = unknown> {
 
     // 发出 REMOVE 事件
     this.emitEvent({
-      type: DataStoreEventType.REMOVE,
+      type: IsomorphicStoreEventType.REMOVE,
       key,
       oldValue,
       namespace: this.namespace,
@@ -277,7 +277,7 @@ export class DataStore<T = unknown> {
 
     // 发出 CLEAR 事件
     this.emitEvent({
-      type: DataStoreEventType.CLEAR,
+      type: IsomorphicStoreEventType.CLEAR,
       namespace: this.namespace,
       timestamp: Date.now(),
       source: this
@@ -381,7 +381,7 @@ export class DataStore<T = unknown> {
   }
 
   /**
-   * 销毁 DataStore 实例
+   * 销毁 IsomorphicStore 实例
    */
   destroy(): void {
     // 清空所有监听器

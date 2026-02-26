@@ -1,8 +1,8 @@
-# DataStore [中文](./README-zh_CN.md)
+# IsomorphicStore [中文](./README-zh_CN.md)
 
 ## 1. Introduction
 
-DataStore is a lightweight and flexible TypeScript storage library that provides a consistent data storage API for browser environments. Regardless of whether the underlying storage mechanism is localStorage, sessionStorage, history state, navigation state, or in-memory storage, you can access data through a unified interface without modifying business logic.
+IsomorphicStore is a lightweight and flexible TypeScript storage library that provides a consistent data storage API for browser environments. Regardless of whether the underlying storage mechanism is localStorage, sessionStorage, history state, navigation state, or in-memory storage, you can access data through a unified interface without modifying business logic.
 
 Key Features:
 
@@ -20,14 +20,14 @@ Key Features:
 Install using your preferred package manager:
 
 ```bash
-npm install data-store
+npm install isomorphic-store
 ```
 
 Or:
 
 ```bash
-pnpm add data-store
-yarn add data-store
+pnpm add isomorphic-store
+yarn add isomorphic-store
 ```
 
 ---
@@ -39,10 +39,10 @@ yarn add data-store
 Create a simple store and perform basic CRUD operations:
 
 ```ts
-import { DataStore, StorageStrategy } from 'data-store';
+import { IsomorphicStore, StorageStrategy } from 'isomorphic-store';
 
 // Create an in-memory store
-const store = new DataStore('my-app:state', StorageStrategy.MEMORY);
+const store = new IsomorphicStore('my-app:state', StorageStrategy.MEMORY);
 
 // Set data
 store.set('username', 'Alice');
@@ -63,14 +63,14 @@ store.destroy();
 
 ### 3.2 Storage Strategies
 
-DataStore provides five built-in storage strategies. Choose based on your requirements:
+IsomorphicStore provides five built-in storage strategies. Choose based on your requirements:
 
 #### 3.2.1 LOCAL (localStorage)
 
 Data persists across browser sessions. Suitable for long-term configurations and user preferences.
 
 ```ts
-const settings = new DataStore('settings', StorageStrategy.LOCAL);
+const settings = new IsomorphicStore('settings', StorageStrategy.LOCAL);
 settings.set('theme', 'dark');
 // Data remains after browser reload
 ```
@@ -80,7 +80,7 @@ settings.set('theme', 'dark');
 Session-scoped persistence. Data is cleared when the tab closes. Suitable for session-level temporary data.
 
 ```ts
-const session = new DataStore('session', StorageStrategy.SESSION);
+const session = new IsomorphicStore('session', StorageStrategy.SESSION);
 session.set('authToken', 'abc123');
 ```
 
@@ -89,7 +89,7 @@ session.set('authToken', 'abc123');
 In-memory storage cleared when the process terminates. Suitable for application runtime-only temporary state.
 
 ```ts
-const cache = new DataStore('cache', StorageStrategy.MEMORY);
+const cache = new IsomorphicStore('cache', StorageStrategy.MEMORY);
 cache.set('cachedList', [1, 2, 3]);
 ```
 
@@ -98,7 +98,7 @@ cache.set('cachedList', [1, 2, 3]);
 Uses the browser History API, integrated with routing. Suitable for intermediate workflow states.
 
 ```ts
-const flow = new DataStore('flow', StorageStrategy.HISTORY);
+const flow = new IsomorphicStore('flow', StorageStrategy.HISTORY);
 flow.set('currentStep', 2);
 ```
 
@@ -107,7 +107,7 @@ flow.set('currentStep', 2);
 Asynchronous Navigation API for cross-tab navigation context.
 
 ```ts
-const nav = new DataStore('nav', StorageStrategy.NAVIGATION);
+const nav = new IsomorphicStore('nav', StorageStrategy.NAVIGATION);
 nav.set('destination', '/home');
 ```
 
@@ -116,7 +116,7 @@ nav.set('destination', '/home');
 Monitor data changes and respond in real-time:
 
 ```ts
-const store = new DataStore('app', StorageStrategy.MEMORY);
+const store = new IsomorphicStore('app', StorageStrategy.MEMORY);
 
 // Subscribe to all changes
 const unsubscribe = store.subscribe(event => {
@@ -140,12 +140,12 @@ Automatically migrate existing data when the data structure is upgraded—no man
 
 ```ts
 // Version 1 data
-const storeV1 = new DataStore('user', StorageStrategy.LOCAL, { version: 1 });
+const storeV1 = new IsomorphicStore('user', StorageStrategy.LOCAL, { version: 1 });
 storeV1.set('profile', { name: 'Alice', age: 25 });
 storeV1.destroy();
 
 // Upgrade to version 2 with migration rules
-const storeV2 = new DataStore('user', StorageStrategy.LOCAL, {
+const storeV2 = new IsomorphicStore('user', StorageStrategy.LOCAL, {
   version: 2,
   migrations: [
     {
@@ -168,7 +168,7 @@ console.log(profile); // { name: 'Alice', age: 25, joinedAt: 1709... }
 Multi-level migration:
 
 ```ts
-const store = new DataStore('data', StorageStrategy.LOCAL, {
+const store = new IsomorphicStore('data', StorageStrategy.LOCAL, {
   version: 3,
   migrations: [
     {
@@ -187,15 +187,15 @@ const store = new DataStore('data', StorageStrategy.LOCAL, {
 
 ### 3.5 Namespacing
 
-Each DataStore instance isolates data through namespaces, preventing conflicts:
+Each IsomorphicStore instance isolates data through namespaces, preventing conflicts:
 
 ```ts
 // User module
-const userStore = new DataStore('user:profile', StorageStrategy.LOCAL);
+const userStore = new IsomorphicStore('user:profile', StorageStrategy.LOCAL);
 userStore.set('name', 'Alice');
 
 // Settings module
-const settingsStore = new DataStore('app:settings', StorageStrategy.LOCAL);
+const settingsStore = new IsomorphicStore('app:settings', StorageStrategy.LOCAL);
 settingsStore.set('theme', 'dark');
 
 // Each operates independently
@@ -209,7 +209,7 @@ console.log(userStore.get('theme')); // null
 Extend storage capabilities by registering custom adapters:
 
 ```ts
-import { globalNamespaceRegistry } from 'data-store';
+import { globalNamespaceRegistry } from 'isomorphic-store';
 
 class IndexedDBAdapter {
   get(key) { /* implementation */ }
@@ -223,14 +223,14 @@ class IndexedDBAdapter {
 globalNamespaceRegistry.register('indexeddb', new IndexedDBAdapter());
 
 // Use it
-const db = new DataStore('myapp', 'indexeddb');
+const db = new IsomorphicStore('myapp', 'indexeddb');
 ```
 
 ---
 
 ## 4. API Reference
 
-### DataStore Class
+### IsomorphicStore Class
 
 #### Constructor
 
@@ -238,13 +238,13 @@ const db = new DataStore('myapp', 'indexeddb');
 constructor(
   namespace: string,
   strategy: StorageStrategy | string,
-  options?: DataStoreOptions<T>
+  options?: IsomorphicStoreOptions<T>
 )
 ```
 
 - `namespace` (string): Namespace identifier. Stores with the same namespace share data.
 - `strategy` (StorageStrategy | string): Storage strategy or custom adapter name.
-- `options` (DataStoreOptions):
+- `options` (IsomorphicStoreOptions):
   - `version` (number): Data version, defaults to 1.
   - `migrations` (MigrationRule[]): Version migration rules.
 
@@ -315,14 +315,14 @@ store.destroy();
 ### Event Object
 
 ```ts
-interface DataStoreEvent<T> {
-  type: DataStoreEventType;        // 'set' | 'remove' | 'clear'
+interface IsomorphicStoreEvent<T> {
+  type: IsomorphicStoreEventType;        // 'set' | 'remove' | 'clear'
   key?: string;                     // Key being operated on
   oldValue?: T | null | undefined;  // Previous value
   newValue?: T | null | undefined;  // New value
   namespace: string;                // Namespace
   timestamp: number;                // Event timestamp in milliseconds
-  source: DataStore<T>;            // Event source (DataStore instance)
+  source: IsomorphicStore<T>;            // Event source (IsomorphicStore instance)
 }
 ```
 
@@ -330,31 +330,31 @@ interface DataStoreEvent<T> {
 
 ```ts
 // Base error class
-class DataStoreError extends Error { }
+class IsomorphicStoreError extends Error { }
 
 // Namespace conflict error
-class NamespaceConflictError extends DataStoreError { }
+class NamespaceConflictError extends IsomorphicStoreError { }
 
 // Migration error
-class MigrationError extends DataStoreError { }
+class MigrationError extends IsomorphicStoreError { }
 
 // Adapter error
-class AdapterError extends DataStoreError { }
+class AdapterError extends IsomorphicStoreError { }
 
 // Not initialized error
-class NotInitializedError extends DataStoreError { }
+class NotInitializedError extends IsomorphicStoreError { }
 
 // Invalid argument error
-class InvalidArgumentError extends DataStoreError { }
+class InvalidArgumentError extends IsomorphicStoreError { }
 ```
 
 Usage example:
 
 ```ts
-import { MigrationError } from 'data-store';
+import { MigrationError } from 'isomorphic-store';
 
 try {
-  const store = new DataStore('app', StorageStrategy.LOCAL, {
+  const store = new IsomorphicStore('app', StorageStrategy.LOCAL, {
     version: 3,
     migrations: [
       { from: 1, to: 2, migrate: d => d }
@@ -373,17 +373,17 @@ try {
 
 ```ts
 import {
-  DataStore,
+  IsomorphicStore,
   StorageStrategy,
-  DataStoreEvent,
-  DataStoreEventType,
-  DataStoreOptions,
+  IsomorphicStoreEvent,
+  IsomorphicStoreEventType,
+  IsomorphicStoreOptions,
   MigrationRule,
   EventListener,
   Unsubscribe,
   IStorageAdapter,
   globalNamespaceRegistry
-} from 'data-store';
+} from 'isomorphic-store';
 ```
 
 ---
@@ -410,4 +410,4 @@ This project is licensed under the MIT License, allowing free use, modification,
 
 ---
 
-For more information and examples, visit the [GitHub repository](https://github.com/anuoua/data-store).
+For more information and examples, visit the [GitHub repository](https://github.com/anuoua/isomorphic-store).

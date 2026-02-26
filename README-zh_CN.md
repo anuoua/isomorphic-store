@@ -1,8 +1,8 @@
-# DataStore
+# IsomorphicStore
 
 ## 1. 介绍
 
-DataStore 是一个轻量级且灵活的 TypeScript 存储库，为浏览器环境提供一致的数据存储 API。无论后端使用 localStorage、sessionStorage、history 状态、navigation 状态还是内存，都可以通过统一接口访问，无需重写业务逻辑。
+IsomorphicStore 是一个轻量级且灵活的 TypeScript 存储库，为浏览器环境提供一致的数据存储 API。无论后端使用 localStorage、sessionStorage、history 状态、navigation 状态还是内存，都可以通过统一接口访问，无需重写业务逻辑。
 
 核心特性：
 
@@ -20,14 +20,14 @@ DataStore 是一个轻量级且灵活的 TypeScript 存储库，为浏览器环�
 使用包管理器安装：
 
 ```bash
-npm install data-store
+npm install isomorphic-store
 ```
 
 或：
 
 ```bash
-pnpm add data-store
-yarn add data-store
+pnpm add isomorphic-store
+yarn add isomorphic-store
 ```
 
 ---
@@ -39,10 +39,10 @@ yarn add data-store
 创建一个简单的存储并执行 CRUD 操作：
 
 ```ts
-import { DataStore, StorageStrategy } from 'data-store';
+import { IsomorphicStore, StorageStrategy } from 'isomorphic-store';
 
 // 创建内存存储
-const store = new DataStore('my-app:state', StorageStrategy.MEMORY);
+const store = new IsomorphicStore('my-app:state', StorageStrategy.MEMORY);
 
 // 设置数据
 store.set('username', 'Alice');
@@ -63,14 +63,14 @@ store.destroy();
 
 ### 3.2 存储策略
 
-DataStore 提供5种内置存储策略，可根据需求选择：
+IsomorphicStore 提供5种内置存储策略，可根据需求选择：
 
 #### 3.2.1 LOCAL (localStorage)
 
 数据持久化，关闭浏览器后仍保留。用于长期配置和用户偏好。
 
 ```ts
-const settings = new DataStore('settings', StorageStrategy.LOCAL);
+const settings = new IsomorphicStore('settings', StorageStrategy.LOCAL);
 settings.set('theme', 'dark');
 // 刷新页面后数据仍存在
 ```
@@ -80,7 +80,7 @@ settings.set('theme', 'dark');
 会话级持久化，标签页关闭时清除。用于会话范围的临时数据。
 
 ```ts
-const session = new DataStore('session', StorageStrategy.SESSION);
+const session = new IsomorphicStore('session', StorageStrategy.SESSION);
 session.set('authToken', 'abc123');
 ```
 
@@ -89,7 +89,7 @@ session.set('authToken', 'abc123');
 内存存储，进程结束后清除。用于仅需应用运行期间的临时状态。
 
 ```ts
-const cache = new DataStore('cache', StorageStrategy.MEMORY);
+const cache = new IsomorphicStore('cache', StorageStrategy.MEMORY);
 cache.set('cachedList', [1, 2, 3]);
 ```
 
@@ -98,7 +98,7 @@ cache.set('cachedList', [1, 2, 3]);
 使用浏览器历史 API，与路由集成。用于流程中间状态。
 
 ```ts
-const flow = new DataStore('flow', StorageStrategy.HISTORY);
+const flow = new IsomorphicStore('flow', StorageStrategy.HISTORY);
 flow.set('currentStep', 2);
 ```
 
@@ -107,7 +107,7 @@ flow.set('currentStep', 2);
 异步导航 API，用于跨标签页导航上下文。
 
 ```ts
-const nav = new DataStore('nav', StorageStrategy.NAVIGATION);
+const nav = new IsomorphicStore('nav', StorageStrategy.NAVIGATION);
 nav.set('destination', '/home');
 ```
 
@@ -116,7 +116,7 @@ nav.set('destination', '/home');
 监听数据变化，实现实时响应：
 
 ```ts
-const store = new DataStore('app', StorageStrategy.MEMORY);
+const store = new IsomorphicStore('app', StorageStrategy.MEMORY);
 
 // 订阅所有变化
 const unsubscribe = store.subscribe(event => {
@@ -140,12 +140,12 @@ unsubscribe();
 
 ```ts
 // 版本 1 的数据
-const storeV1 = new DataStore('user', StorageStrategy.LOCAL, { version: 1 });
+const storeV1 = new IsomorphicStore('user', StorageStrategy.LOCAL, { version: 1 });
 storeV1.set('profile', { name: 'Alice', age: 25 });
 storeV1.destroy();
 
 // 升级到版本 2，定义迁移规则
-const storeV2 = new DataStore('user', StorageStrategy.LOCAL, {
+const storeV2 = new IsomorphicStore('user', StorageStrategy.LOCAL, {
   version: 2,
   migrations: [
     {
@@ -168,7 +168,7 @@ console.log(profile); // { name: 'Alice', age: 25, joinedAt: 1709... }
 多级迁移：
 
 ```ts
-const store = new DataStore('data', StorageStrategy.LOCAL, {
+const store = new IsomorphicStore('data', StorageStrategy.LOCAL, {
   version: 3,
   migrations: [
     {
@@ -187,15 +187,15 @@ const store = new DataStore('data', StorageStrategy.LOCAL, {
 
 ### 3.5 命名空间
 
-每个 DataStore 实例通过命名空间隔离数据，防止冲突：
+每个 IsomorphicStore 实例通过命名空间隔离数据，防止冲突：
 
 ```ts
 // 用户模块
-const userStore = new DataStore('user:profile', StorageStrategy.LOCAL);
+const userStore = new IsomorphicStore('user:profile', StorageStrategy.LOCAL);
 userStore.set('name', 'Alice');
 
 // 设置模块
-const settingsStore = new DataStore('app:settings', StorageStrategy.LOCAL);
+const settingsStore = new IsomorphicStore('app:settings', StorageStrategy.LOCAL);
 settingsStore.set('theme', 'dark');
 
 // 各自独立，不互相影响
@@ -209,7 +209,7 @@ console.log(userStore.get('theme')); // null
 扩展存储能力，注册自定义适配器：
 
 ```ts
-import { globalNamespaceRegistry } from 'data-store';
+import { globalNamespaceRegistry } from 'isomorphic-store';
 
 class IndexedDBAdapter {
   get(key) { /* 实现 */ }
@@ -223,14 +223,14 @@ class IndexedDBAdapter {
 globalNamespaceRegistry.register('indexeddb', new IndexedDBAdapter());
 
 // 使用
-const db = new DataStore('myapp', 'indexeddb');
+const db = new IsomorphicStore('myapp', 'indexeddb');
 ```
 
 ---
 
 ## 4. API 参考
 
-### DataStore 类
+### IsomorphicStore 类
 
 #### 构造函数
 
@@ -238,13 +238,13 @@ const db = new DataStore('myapp', 'indexeddb');
 constructor(
   namespace: string,
   strategy: StorageStrategy | string,
-  options?: DataStoreOptions<T>
+  options?: IsomorphicStoreOptions<T>
 )
 ```
 
 - `namespace`（string）：命名空间标识，相同命名空间共享数据。
 - `strategy`（StorageStrategy | string）：存储策略或自定义适配器名称。
-- `options`（DataStoreOptions）：
+- `options`（IsomorphicStoreOptions）：
   - `version`（number）：数据版本，默认为 1。
   - `migrations`（MigrationRule[]）：版本迁移规则。
 
@@ -315,14 +315,14 @@ store.destroy();
 ### 事件对象
 
 ```ts
-interface DataStoreEvent<T> {
-  type: DataStoreEventType;      // 'set' | 'remove' | 'clear'
+interface IsomorphicStoreEvent<T> {
+  type: IsomorphicStoreEventType;      // 'set' | 'remove' | 'clear'
   key?: string;                   // 操作的键名
   oldValue?: T | null | undefined; // 旧值
   newValue?: T | null | undefined; // 新值
   namespace: string;              // 命名空间
   timestamp: number;              // 事件发生时间戳（毫秒）
-  source: DataStore<T>;          // 事件来源（DataStore 实例）
+  source: IsomorphicStore<T>;          // 事件来源（IsomorphicStore 实例）
 }
 ```
 
@@ -330,31 +330,31 @@ interface DataStoreEvent<T> {
 
 ```ts
 // 基础错误类
-class DataStoreError extends Error { }
+class IsomorphicStoreError extends Error { }
 
 // 命名空间冲突错误
-class NamespaceConflictError extends DataStoreError { }
+class NamespaceConflictError extends IsomorphicStoreError { }
 
 // 迁移错误
-class MigrationError extends DataStoreError { }
+class MigrationError extends IsomorphicStoreError { }
 
 // 适配器错误
-class AdapterError extends DataStoreError { }
+class AdapterError extends IsomorphicStoreError { }
 
 // 未初始化错误
-class NotInitializedError extends DataStoreError { }
+class NotInitializedError extends IsomorphicStoreError { }
 
 // 无效参数错误
-class InvalidArgumentError extends DataStoreError { }
+class InvalidArgumentError extends IsomorphicStoreError { }
 ```
 
 使用示例：
 
 ```ts
-import { MigrationError } from 'data-store';
+import { MigrationError } from 'isomorphic-store';
 
 try {
-  const store = new DataStore('app', StorageStrategy.LOCAL, {
+  const store = new IsomorphicStore('app', StorageStrategy.LOCAL, {
     version: 3,
     migrations: [
       { from: 1, to: 2, migrate: d => d }
@@ -373,17 +373,17 @@ try {
 
 ```ts
 import {
-  DataStore,
+  IsomorphicStore,
   StorageStrategy,
-  DataStoreEvent,
-  DataStoreEventType,
-  DataStoreOptions,
+  IsomorphicStoreEvent,
+  IsomorphicStoreEventType,
+  IsomorphicStoreOptions,
   MigrationRule,
   EventListener,
   Unsubscribe,
   IStorageAdapter,
   globalNamespaceRegistry
-} from 'data-store';
+} from 'isomorphic-store';
 ```
 
 ---
@@ -410,4 +410,4 @@ Copyright (c) 2025
 
 ---
 
-更多信息和示例，请访问 [GitHub 仓库](https://github.com/anuoua/data-store)。
+更多信息和示例，请访问 [GitHub 仓库](https://github.com/anuoua/isomorphic-store)。

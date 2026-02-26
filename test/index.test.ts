@@ -3,25 +3,25 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { DataStore, StorageStrategy, globalNamespaceRegistry } from "../src";
+import { IsomorphicStore, StorageStrategy, globalNamespaceRegistry } from "../src";
 
-describe("DataStore - Smoke Test", () => {
+describe("IsomorphicStore - Smoke Test", () => {
   it("should export all public APIs", () => {
-    expect(DataStore).toBeDefined();
+    expect(IsomorphicStore).toBeDefined();
     expect(StorageStrategy).toBeDefined();
     expect(globalNamespaceRegistry).toBeDefined();
   });
 
-  it("should create a basic DataStore instance", () => {
+  it("should create a basic IsomorphicStore instance", () => {
     globalNamespaceRegistry.clear();
-    const store = new DataStore("smoke:test", StorageStrategy.MEMORY);
+    const store = new IsomorphicStore("smoke:test", StorageStrategy.MEMORY);
     expect(store).toBeDefined();
     store.destroy();
   });
 
   it("should perform basic operations", () => {
     globalNamespaceRegistry.clear();
-    const store = new DataStore("smoke:ops", StorageStrategy.MEMORY);
+    const store = new IsomorphicStore("smoke:ops", StorageStrategy.MEMORY);
 
     store.set("key", "value");
     expect(store.get("key")).toBe("value");

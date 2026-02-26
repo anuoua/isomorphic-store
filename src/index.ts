@@ -1,12 +1,12 @@
 // Types and Interfaces
 export {
   StorageStrategy,
-  DataStoreEventType,
+  IsomorphicStoreEventType,
   // the following are types/interfaces
   type DataWithVersion,
   type MigrationRule,
-  type DataStoreOptions,
-  type DataStoreEvent,
+  type IsomorphicStoreOptions,
+  type IsomorphicStoreEvent,
   type EventListener,
   type Unsubscribe,
   type IStorageAdapter
@@ -14,7 +14,7 @@ export {
 
 // Errors
 export {
-  DataStoreError,
+  IsomorphicStoreError,
   NamespaceConflictError,
   SerializationError,
   StorageQuotaExceededError,
@@ -35,7 +35,7 @@ export {
 export { StorageAdapterFactory } from './factory';
 
 // Main Class
-export { DataStore } from './data-store';
+export { IsomorphicStore as IsomorphicStore } from './isomorphic-store';
 
 // Registry
 export { globalNamespaceRegistry } from './registry';

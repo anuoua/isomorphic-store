@@ -3,10 +3,10 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { DataStore, StorageStrategy, DataStoreEventType, globalNamespaceRegistry } from '../src';
+import { IsomorphicStore, StorageStrategy, IsomorphicStoreEventType, globalNamespaceRegistry } from '../src';
 
-describe('DataStore - Event System', () => {
-  let store: DataStore<any>;
+describe('IsomorphicStore - Event System', () => {
+  let store: IsomorphicStore<any>;
 
   beforeEach(() => {
     if (typeof window !== 'undefined') {
@@ -18,7 +18,7 @@ describe('DataStore - Event System', () => {
       }
     }
     globalNamespaceRegistry.clear();
-    store = new DataStore('test:events', StorageStrategy.MEMORY);
+    store = new IsomorphicStore('test:events', StorageStrategy.MEMORY);
   });
 
   afterEach(() => {
@@ -31,7 +31,7 @@ describe('DataStore - Event System', () => {
     it('should trigger on global listener on SET', () => {
       return new Promise<void>((resolve) => {
         const listener = vi.fn((event) => {
-          expect(event.type).toBe(DataStoreEventType.SET);
+          expect(event.type).toBe(IsomorphicStoreEventType.SET);
           expect(event.key).toBe('key1');
           expect(event.newValue).toBe('value1');
           expect(event.namespace).toBe('test:events');
@@ -49,7 +49,7 @@ describe('DataStore - Event System', () => {
         store.set('key1', 'value1');
 
         const listener = vi.fn((event) => {
-          expect(event.type).toBe(DataStoreEventType.REMOVE);
+          expect(event.type).toBe(IsomorphicStoreEventType.REMOVE);
           expect(event.key).toBe('key1');
           expect(event.oldValue).toBe('value1');
           resolve();
@@ -65,7 +65,7 @@ describe('DataStore - Event System', () => {
         store.set('key1', 'value1');
 
         const listener = vi.fn((event) => {
-          expect(event.type).toBe(DataStoreEventType.CLEAR);
+          expect(event.type).toBe(IsomorphicStoreEventType.CLEAR);
           expect(event.key).toBeUndefined();
           resolve();
         });
@@ -173,7 +173,7 @@ describe('DataStore - Event System', () => {
       store.remove('key1');
 
       expect(listener).toHaveBeenCalledTimes(1);
-      expect(listener.mock.calls[0][0].type).toBe(DataStoreEventType.REMOVE);
+      expect(listener.mock.calls[0][0].type).toBe(IsomorphicStoreEventType.REMOVE);
     });
   });
 

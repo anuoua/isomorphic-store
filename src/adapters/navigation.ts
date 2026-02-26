@@ -1,4 +1,4 @@
-import { type IStorageAdapter, type DataStoreEvent } from '../types';
+import { type IStorageAdapter, type IsomorphicStoreEvent } from '../types';
 import { SerializationError, UnsupportedStrategyError } from '../errors';
 
 /**
@@ -7,7 +7,7 @@ import { SerializationError, UnsupportedStrategyError } from '../errors';
  */
 export class NavigationStateAdapter<T = unknown> implements IStorageAdapter<T> {
   private namespace: string;
-  private externalChangeCallback?: (event: DataStoreEvent<T>) => void;
+  private externalChangeCallback?: (event: IsomorphicStoreEvent<T>) => void;
   private lastState: Record<string, any> = {};
 
   constructor(namespace: string) {
@@ -227,7 +227,7 @@ export class NavigationStateAdapter<T = unknown> implements IStorageAdapter<T> {
     }
   }
 
-  setExternalChangeCallback(callback: (event: DataStoreEvent<T>) => void): void {
+  setExternalChangeCallback(callback: (event: IsomorphicStoreEvent<T>) => void): void {
     this.externalChangeCallback = callback;
   }
 }

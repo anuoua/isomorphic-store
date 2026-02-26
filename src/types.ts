@@ -12,7 +12,7 @@ export enum StorageStrategy {
 /**
  * 数据变化事件类型枚举
  */
-export enum DataStoreEventType {
+export enum IsomorphicStoreEventType {
   SET = 'set',       // 设置或更新数据
   REMOVE = 'remove', // 删除数据
   CLEAR = 'clear'    // 清空命名空间
@@ -36,9 +36,9 @@ export interface MigrationRule<T = unknown> {
 }
 
 /**
- * DataStore 配置选项
+ * IsomorphicStore 配置选项
  */
-export interface DataStoreOptions<T = unknown> {
+export interface IsomorphicStoreOptions<T = unknown> {
   version?: number;                      // 当前版本（默认为 1）
   migrations?: MigrationRule<T>[];       // 迁移规则
 }
@@ -46,21 +46,21 @@ export interface DataStoreOptions<T = unknown> {
 /**
  * 数据变化事件对象
  */
-export interface DataStoreEvent<T = unknown> {
-  type: DataStoreEventType;
+export interface IsomorphicStoreEvent<T = unknown> {
+  type: IsomorphicStoreEventType;
   key?: string;              // SET/REMOVE 时存在，CLEAR 时无
   // oldValue/newValue may be null or undefined depending on operation
   oldValue?: T | null | undefined;              // SET/REMOVE 时存在，可为 null
   newValue?: T | null | undefined;              // SET 时存在，REMOVE 时为 undefined or null
   namespace: string;         // 命名空间
   timestamp: number;         // 事件发生时间戳（毫秒）
-  source: any;               // 事件来源，指向 DataStore 实例
+  source: any;               // 事件来源，指向 IsomorphicStore 实例
 }
 
 /**
  * 事件监听器类型
  */
-export type EventListener<T = unknown> = (event: DataStoreEvent<T>) => void;
+export type EventListener<T = unknown> = (event: IsomorphicStoreEvent<T>) => void;
 
 /**
  * 取消订阅函数类型
@@ -77,5 +77,5 @@ export interface IStorageAdapter<T = unknown> {
   clear(): void;
   hasKey(key: string): boolean;
   // 可选：Adapter 可注册外部变化回调
-  setExternalChangeCallback?(callback: (event: DataStoreEvent<T>) => void): void;
+  setExternalChangeCallback?(callback: (event: IsomorphicStoreEvent<T>) => void): void;
 }

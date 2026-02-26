@@ -3,9 +3,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { DataStore, StorageStrategy, globalNamespaceRegistry, MigrationError } from '../src';
+import { IsomorphicStore, StorageStrategy, globalNamespaceRegistry, MigrationError } from '../src';
 
-describe('DataStore - Version Migrations', () => {
+describe('IsomorphicStore - Version Migrations', () => {
   beforeEach(() => {
     if (typeof window !== 'undefined') {
       if (window.localStorage) {
@@ -22,7 +22,7 @@ describe('DataStore - Version Migrations', () => {
   describe('Single migration', () => {
     it('should migrate data from v1 to v2', () => {
       // 创建 v1 store 并设置数据（使用 LOCAL 以持久化数据）
-      const storeV1 = new DataStore('test:migration', StorageStrategy.LOCAL, {
+      const storeV1 = new IsomorphicStore('test:migration', StorageStrategy.LOCAL, {
         version: 1
       });
 
@@ -30,7 +30,7 @@ describe('DataStore - Version Migrations', () => {
       storeV1.destroy();
 
       // 创建 v2 store，带有迁移规则
-      const storeV2 = new DataStore(
+      const storeV2 = new IsomorphicStore(
         'test:migration',
         StorageStrategy.LOCAL,
         {
@@ -59,7 +59,7 @@ describe('DataStore - Version Migrations', () => {
 
     it('should automatically write back migrated data with new version', () => {
       // 使用 localStorage 确保数据持久化
-      const storeV1 = new DataStore('test:migration-persist', StorageStrategy.LOCAL, {
+      const storeV1 = new IsomorphicStore('test:migration-persist', StorageStrategy.LOCAL, {
         version: 1
       });
 
@@ -67,7 +67,7 @@ describe('DataStore - Version Migrations', () => {
       storeV1.destroy();
 
       // 创建 v2 store
-      const storeV2 = new DataStore(
+      const storeV2 = new IsomorphicStore(
         'test:migration-persist',
         StorageStrategy.LOCAL,
         {
@@ -96,7 +96,7 @@ describe('DataStore - Version Migrations', () => {
       storeV2.destroy();
 
       // 创建新的 v2 store，不带迁移规则
-      const storeV2Again = new DataStore(
+      const storeV2Again = new IsomorphicStore(
         'test:migration-persist',
         StorageStrategy.LOCAL,
         {
@@ -118,7 +118,7 @@ describe('DataStore - Version Migrations', () => {
   describe('Multiple migrations', () => {
     it('should execute migration chain v1 -> v2 -> v3', () => {
       // 创建 v1 store
-      const storeV1 = new DataStore('test:chain', StorageStrategy.LOCAL, {
+      const storeV1 = new IsomorphicStore('test:chain', StorageStrategy.LOCAL, {
         version: 1
       });
 
@@ -126,7 +126,7 @@ describe('DataStore - Version Migrations', () => {
       storeV1.destroy();
 
       // 创建 v3 store with migration chain
-      const storeV3 = new DataStore(
+      const storeV3 = new IsomorphicStore(
         'test:chain',
         StorageStrategy.LOCAL,
         {
@@ -173,7 +173,7 @@ describe('DataStore - Version Migrations', () => {
       ];
 
       // 创建 v2 store
-      const storeV2 = new DataStore('test:skip', StorageStrategy.LOCAL, {
+      const storeV2 = new IsomorphicStore('test:skip', StorageStrategy.LOCAL, {
         version: 2,
         migrations: [migrations[0]]
       });
@@ -182,7 +182,7 @@ describe('DataStore - Version Migrations', () => {
       storeV2.destroy();
 
       // 创建 v3 store，从 v2 数据读取
-      const storeV3 = new DataStore('test:skip', StorageStrategy.LOCAL, {
+      const storeV3 = new IsomorphicStore('test:skip', StorageStrategy.LOCAL, {
         version: 3,
         migrations
       });
@@ -197,7 +197,7 @@ describe('DataStore - Version Migrations', () => {
 
   describe('No migration needed', () => {
     it('should return data as-is when versions match', () => {
-      const storeV2 = new DataStore('test:nomig', StorageStrategy.MEMORY, {
+      const storeV2 = new IsomorphicStore('test:nomig', StorageStrategy.MEMORY, {
         version: 2
       });
 
@@ -212,7 +212,7 @@ describe('DataStore - Version Migrations', () => {
 
     it('should return data as-is when new version is lower', () => {
       // 创建 v2 store
-      const storeV2 = new DataStore('test:downgrade', StorageStrategy.LOCAL, {
+      const storeV2 = new IsomorphicStore('test:downgrade', StorageStrategy.LOCAL, {
         version: 2
       });
 
@@ -220,7 +220,7 @@ describe('DataStore - Version Migrations', () => {
       storeV2.destroy();
 
       // 创建 v1 store（降级）
-      const storeV1 = new DataStore('test:downgrade', StorageStrategy.LOCAL, {
+      const storeV1 = new IsomorphicStore('test:downgrade', StorageStrategy.LOCAL, {
         version: 1
       });
 
@@ -235,7 +235,7 @@ describe('DataStore - Version Migrations', () => {
   describe('Error handling', () => {
     it('should throw MigrationError when migration rule is missing', () => {
       // 创建 v1 store
-      const storeV1 = new DataStore('test:error', StorageStrategy.LOCAL, {
+      const storeV1 = new IsomorphicStore('test:error', StorageStrategy.LOCAL, {
         version: 1
       });
 
@@ -243,7 +243,7 @@ describe('DataStore - Version Migrations', () => {
       storeV1.destroy();
 
       // 创建 v3 store，但只有 v1->v2 的迁移规则
-      const storeV3 = new DataStore(
+      const storeV3 = new IsomorphicStore(
         'test:error',
         StorageStrategy.LOCAL,
         {
@@ -267,14 +267,14 @@ describe('DataStore - Version Migrations', () => {
     });
 
     it('should handle migration function errors', () => {
-      const storeV1 = new DataStore('test:migrate-error', StorageStrategy.LOCAL, {
+      const storeV1 = new IsomorphicStore('test:migrate-error', StorageStrategy.LOCAL, {
         version: 1
       });
 
       storeV1.set('data', { value: 'string' });
       storeV1.destroy();
 
-      const storeV2 = new DataStore(
+      const storeV2 = new IsomorphicStore(
         'test:migrate-error',
         StorageStrategy.LOCAL,
         {
@@ -301,7 +301,7 @@ describe('DataStore - Version Migrations', () => {
 
   describe('Complex migration scenarios', () => {
     it('should handle nested object migrations', () => {
-      const storeV1 = new DataStore('test:nested', StorageStrategy.LOCAL, {
+      const storeV1 = new IsomorphicStore('test:nested', StorageStrategy.LOCAL, {
         version: 1
       });
 
@@ -314,7 +314,7 @@ describe('DataStore - Version Migrations', () => {
       });
       storeV1.destroy();
 
-      const storeV2 = new DataStore(
+      const storeV2 = new IsomorphicStore(
         'test:nested',
         StorageStrategy.LOCAL,
         {
@@ -342,7 +342,7 @@ describe('DataStore - Version Migrations', () => {
     });
 
     it('should handle array migrations', () => {
-      const storeV1 = new DataStore('test:array', StorageStrategy.LOCAL, {
+      const storeV1 = new IsomorphicStore('test:array', StorageStrategy.LOCAL, {
         version: 1
       });
 
@@ -352,7 +352,7 @@ describe('DataStore - Version Migrations', () => {
       ]);
       storeV1.destroy();
 
-      const storeV2 = new DataStore(
+      const storeV2 = new IsomorphicStore(
         'test:array',
         StorageStrategy.LOCAL,
         {
@@ -383,7 +383,7 @@ describe('DataStore - Version Migrations', () => {
     });
 
     it('should handle type transformations', () => {
-      const storeV1 = new DataStore('test:transform', StorageStrategy.LOCAL, {
+      const storeV1 = new IsomorphicStore('test:transform', StorageStrategy.LOCAL, {
         version: 1
       });
 
@@ -393,7 +393,7 @@ describe('DataStore - Version Migrations', () => {
       });
       storeV1.destroy();
 
-      const storeV2 = new DataStore(
+      const storeV2 = new IsomorphicStore(
         'test:transform',
         StorageStrategy.LOCAL,
         {

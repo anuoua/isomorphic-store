@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
-  DataStore,
+  IsomorphicStore,
   StorageStrategy,
   globalNamespaceRegistry,
   MemoryStorageAdapter,
@@ -224,9 +224,9 @@ describe('Storage Adapters', () => {
     });
   });
 
-  describe('Adapter integration with DataStore', () => {
+  describe('Adapter integration with IsomorphicStore', () => {
     it('MEMORY strategy should use MemoryStorageAdapter', () => {
-      const store = new DataStore('test:memory', StorageStrategy.MEMORY);
+      const store = new IsomorphicStore('test:memory', StorageStrategy.MEMORY);
 
       store.set('key1', 'value1');
       expect(store.get('key1')).toBe('value1');
@@ -235,7 +235,7 @@ describe('Storage Adapters', () => {
     });
 
     it('LOCAL strategy should use LocalStorageAdapter', () => {
-      const store = new DataStore('test:local', StorageStrategy.LOCAL);
+      const store = new IsomorphicStore('test:local', StorageStrategy.LOCAL);
 
       store.set('key1', 'value1');
       expect(window.localStorage.getItem('test:local:key1')).toBeTruthy();
@@ -245,7 +245,7 @@ describe('Storage Adapters', () => {
     });
 
     it('SESSION strategy should use SessionStorageAdapter', () => {
-      const store = new DataStore('test:session', StorageStrategy.SESSION);
+      const store = new IsomorphicStore('test:session', StorageStrategy.SESSION);
 
       store.set('key1', 'value1');
       expect(window.sessionStorage.getItem('test:session:key1')).toBeTruthy();
@@ -255,7 +255,7 @@ describe('Storage Adapters', () => {
     });
 
     it('HISTORY strategy should use HistoryStateAdapter', () => {
-      const store = new DataStore('test:history', StorageStrategy.HISTORY);
+      const store = new IsomorphicStore('test:history', StorageStrategy.HISTORY);
 
       store.set('key1', 'value1');
       expect(window.history.state['test:history']['test:history:key1']).toBeTruthy();
@@ -267,8 +267,8 @@ describe('Storage Adapters', () => {
 
   describe('Adapter data isolation', () => {
     it('should isolate data between different adapters', () => {
-      const memoryStore = new DataStore('isolated:mem', StorageStrategy.MEMORY);
-      const localStore = new DataStore('isolated:local', StorageStrategy.LOCAL);
+      const memoryStore = new IsomorphicStore('isolated:mem', StorageStrategy.MEMORY);
+      const localStore = new IsomorphicStore('isolated:local', StorageStrategy.LOCAL);
 
       memoryStore.set('key', 'memory-value');
       localStore.set('key', 'local-value');
@@ -281,8 +281,8 @@ describe('Storage Adapters', () => {
     });
 
     it('should isolate data between different namespaces in same adapter', () => {
-      const store1 = new DataStore('namespace1', StorageStrategy.LOCAL);
-      const store2 = new DataStore('namespace2', StorageStrategy.LOCAL);
+      const store1 = new IsomorphicStore('namespace1', StorageStrategy.LOCAL);
+      const store2 = new IsomorphicStore('namespace2', StorageStrategy.LOCAL);
 
       store1.set('key', 'value1');
       store2.set('key', 'value2');

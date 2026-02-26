@@ -4,15 +4,15 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
-  DataStore,
+  IsomorphicStore,
   StorageStrategy,
   globalNamespaceRegistry,
   NamespaceConflictError,
   SerializationError,
-  DataStoreError
+  IsomorphicStoreError
 } from '../src';
 
-describe('DataStore - Error Handling', () => {
+describe('IsomorphicStore - Error Handling', () => {
   beforeEach(() => {
     if (typeof window !== 'undefined') {
       if (window.localStorage) {
@@ -31,30 +31,30 @@ describe('DataStore - Error Handling', () => {
 
   describe('NamespaceConflictError', () => {
     it('should throw error when creating store with existing namespace (same strategy)', () => {
-      const store1 = new DataStore('conflict:test', StorageStrategy.MEMORY);
+      const store1 = new IsomorphicStore('conflict:test', StorageStrategy.MEMORY);
 
       expect(() => {
-        new DataStore('conflict:test', StorageStrategy.MEMORY);
+        new IsomorphicStore('conflict:test', StorageStrategy.MEMORY);
       }).toThrow(NamespaceConflictError);
 
       store1.destroy();
     });
 
     it('should throw error when creating store with existing namespace (different strategy)', () => {
-      const store1 = new DataStore('conflict:test2', StorageStrategy.MEMORY);
+      const store1 = new IsomorphicStore('conflict:test2', StorageStrategy.MEMORY);
 
       expect(() => {
-        new DataStore('conflict:test2', StorageStrategy.LOCAL);
+        new IsomorphicStore('conflict:test2', StorageStrategy.LOCAL);
       }).toThrow(NamespaceConflictError);
 
       store1.destroy();
     });
 
     it('should have descriptive error message', () => {
-      const store1 = new DataStore('conflict:test3', StorageStrategy.MEMORY);
+      const store1 = new IsomorphicStore('conflict:test3', StorageStrategy.MEMORY);
 
       try {
-        new DataStore('conflict:test3', StorageStrategy.SESSION);
+        new IsomorphicStore('conflict:test3', StorageStrategy.SESSION);
       } catch (error) {
         expect(error).toBeInstanceOf(NamespaceConflictError);
         expect((error as Error).message).toContain('conflict:test3');
@@ -65,18 +65,18 @@ describe('DataStore - Error Handling', () => {
     });
 
     it('should allow namespace reuse after destroy', () => {
-      const store1 = new DataStore('reuse:test', StorageStrategy.MEMORY);
+      const store1 = new IsomorphicStore('reuse:test', StorageStrategy.MEMORY);
       store1.destroy();
 
       // Should not throw
-      const store2 = new DataStore('reuse:test', StorageStrategy.MEMORY);
+      const store2 = new IsomorphicStore('reuse:test', StorageStrategy.MEMORY);
       store2.destroy();
     });
   });
 
   describe('SerializationError', () => {
     it('should throw error for circular references', () => {
-      const store = new DataStore('serialize:test', StorageStrategy.LOCAL);
+      const store = new IsomorphicStore('serialize:test', StorageStrategy.LOCAL);
 
       const circular: any = { a: 1 };
       circular.self = circular;
@@ -89,7 +89,7 @@ describe('DataStore - Error Handling', () => {
     });
 
     it('should handle objects with functions gracefully', () => {
-      const store = new DataStore('serialize:test2', StorageStrategy.LOCAL);
+      const store = new IsomorphicStore('serialize:test2', StorageStrategy.LOCAL);
 
       const objectWithFunction = {
         a: 1,
@@ -107,14 +107,14 @@ describe('DataStore - Error Handling', () => {
     });
   });
 
-  describe('DataStoreError', () => {
-    it('should be base class for all DataStore errors', () => {
-      const store1 = new DataStore('error:test', StorageStrategy.MEMORY);
+  describe('IsomorphicStoreError', () => {
+    it('should be base class for all IsomorphicStore errors', () => {
+      const store1 = new IsomorphicStore('error:test', StorageStrategy.MEMORY);
 
       try {
-        new DataStore('error:test', StorageStrategy.SESSION);
+        new IsomorphicStore('error:test', StorageStrategy.SESSION);
       } catch (error) {
-        expect(error).toBeInstanceOf(DataStoreError);
+        expect(error).toBeInstanceOf(IsomorphicStoreError);
       }
 
       store1.destroy();
@@ -132,11 +132,11 @@ describe('DataStore - Error Handling', () => {
       for (const strategy of strategies) {
         globalNamespaceRegistry.clear();
 
-        const store1 = new DataStore(`error:test:${strategy}`, strategy);
+        const store1 = new IsomorphicStore(`error:test:${strategy}`, strategy);
         let thrownError: Error | null = null;
 
         try {
-          new DataStore(`error:test:${strategy}`, strategy);
+          new IsomorphicStore(`error:test:${strategy}`, strategy);
         } catch (error) {
           thrownError = error as Error;
         }
@@ -149,7 +149,7 @@ describe('DataStore - Error Handling', () => {
 
   describe('Memory management', () => {
     it('should not leak listeners after destroy', () => {
-      const store = new DataStore('leak:test', StorageStrategy.MEMORY);
+      const store = new IsomorphicStore('leak:test', StorageStrategy.MEMORY);
 
       const listener = () => {};
       store.on(listener);
@@ -166,7 +166,7 @@ describe('DataStore - Error Handling', () => {
 
   describe('Invalid usage', () => {
     it('should handle getting from non-existent namespace gracefully', () => {
-      const store = new DataStore('valid:test', StorageStrategy.MEMORY);
+      const store = new IsomorphicStore('valid:test', StorageStrategy.MEMORY);
 
       const result = store.get('nonexistent');
       expect(result).toBeNull();
@@ -175,7 +175,7 @@ describe('DataStore - Error Handling', () => {
     });
 
     it('should handle removing from non-existent namespace gracefully', () => {
-      const store = new DataStore('valid:test2', StorageStrategy.MEMORY);
+      const store = new IsomorphicStore('valid:test2', StorageStrategy.MEMORY);
 
       // Should not throw
       expect(() => {
@@ -186,7 +186,7 @@ describe('DataStore - Error Handling', () => {
     });
 
     it('should handle clearing empty namespace gracefully', () => {
-      const store = new DataStore('valid:test3', StorageStrategy.MEMORY);
+      const store = new IsomorphicStore('valid:test3', StorageStrategy.MEMORY);
 
       // Should not throw
       expect(() => {
@@ -199,7 +199,7 @@ describe('DataStore - Error Handling', () => {
 
   describe('Browser API compatibility', () => {
     it('should gracefully handle missing localStorage', () => {
-      const store = new DataStore('compat:test', StorageStrategy.LOCAL);
+      const store = new IsomorphicStore('compat:test', StorageStrategy.LOCAL);
 
       // Should not throw even if localStorage is unavailable
       const result = store.get('key');
@@ -209,7 +209,7 @@ describe('DataStore - Error Handling', () => {
     });
 
     it('should gracefully handle missing sessionStorage', () => {
-      const store = new DataStore('compat:test2', StorageStrategy.SESSION);
+      const store = new IsomorphicStore('compat:test2', StorageStrategy.SESSION);
 
       // Should not throw even if sessionStorage is unavailable
       const result = store.get('key');
@@ -219,7 +219,7 @@ describe('DataStore - Error Handling', () => {
     });
 
     it('should gracefully handle missing history API', () => {
-      const store = new DataStore('compat:test3', StorageStrategy.HISTORY);
+      const store = new IsomorphicStore('compat:test3', StorageStrategy.HISTORY);
 
       // Should not throw even if history API is unavailable
       const result = store.get('key');
@@ -229,7 +229,7 @@ describe('DataStore - Error Handling', () => {
     });
 
     it('should gracefully handle missing Navigation API', () => {
-      const store = new DataStore('compat:test4', StorageStrategy.NAVIGATION);
+      const store = new IsomorphicStore('compat:test4', StorageStrategy.NAVIGATION);
 
       // Should not throw even if Navigation API is unavailable
       const result = store.get('key');
@@ -241,7 +241,7 @@ describe('DataStore - Error Handling', () => {
 
   describe('Data type validation', () => {
     it('should not crash on storing non-JSON-serializable types', () => {
-      const store = new DataStore('types:test', StorageStrategy.LOCAL);
+      const store = new IsomorphicStore('types:test', StorageStrategy.LOCAL);
 
       const data = {
         number: 123,
