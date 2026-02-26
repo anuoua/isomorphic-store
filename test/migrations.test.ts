@@ -151,7 +151,7 @@ describe('DataStore - Version Migrations', () => {
         }
       );
 
-      const result = storeV3.get('data');
+      const result = storeV3.get('data')! as any;
       expect(result.value).toBe(25); // (10 * 2) + 5
       expect(result.timestamp).toBeDefined();
 
@@ -332,7 +332,7 @@ describe('DataStore - Version Migrations', () => {
         }
       );
 
-      const result = storeV2.get('user');
+      const result = storeV2.get('user')!;
       expect(result).toEqual({
         fullName: 'John Doe',
         bio: 'Developer'
@@ -373,7 +373,7 @@ describe('DataStore - Version Migrations', () => {
         }
       );
 
-      const result = storeV2.get('items');
+      const result = storeV2.get('items')!;
       expect(result).toEqual([
         { id: 1, name: 'A', label: 'A', deleted: false },
         { id: 2, name: 'B', label: 'B', deleted: false }
@@ -415,7 +415,7 @@ describe('DataStore - Version Migrations', () => {
         }
       );
 
-      const result = storeV2.get('config');
+      const result = storeV2.get('config')!;
       expect(result).toEqual({
         theme: 'light',
         notificationSettings: {

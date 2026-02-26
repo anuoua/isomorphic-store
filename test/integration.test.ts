@@ -74,9 +74,10 @@ describe('DataStore - Integration Tests', () => {
       const memoryStore = new DataStore('app.memory', StorageStrategy.MEMORY);
 
       // Initialize memory from localStorage
-      const saved = localStorage.get('config');
+      type ConfigType = { apiUrl: string };
+      const saved = localStorage.get('config') as ConfigType | null;
       if (saved === null) {
-        const defaultConfig = { apiUrl: 'https://api.example.com' };
+        const defaultConfig: ConfigType = { apiUrl: 'https://api.example.com' };
         localStorage.set('config', defaultConfig as any);
         memoryStore.set('config', defaultConfig as any);
       } else {
@@ -85,14 +86,14 @@ describe('DataStore - Integration Tests', () => {
 
       // Modify in memory
       let config = memoryStore.get('config');
-      expect(config?.apiUrl).toBe('https://api.example.com');
+      expect((config as any).apiUrl).toBe('https://api.example.com');
 
       // Sync back to localStorage
       config = memoryStore.get('config');
       localStorage.set('config', config as any);
 
       const savedConfig = localStorage.get('config');
-      expect(savedConfig?.apiUrl).toBe('https://api.example.com');
+      expect((savedConfig as any).apiUrl).toBe('https://api.example.com');
 
       localStorage.destroy();
       memoryStore.destroy();
@@ -156,7 +157,7 @@ describe('DataStore - Integration Tests', () => {
         cachedResult = result as any;
       }
 
-      expect(cachedResult.data).toBe('expensive result');
+      expect(cachedResult!.data).toBe('expensive result');
 
       // Second access - from cache
       const cachedResult2 = cache.get('query1');

@@ -2,11 +2,11 @@
   "name": "data-store",
   "version": "0.0.1",
   "description": "",
-  "main": "index.js",
+  "module": "dist/index.mjs",
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "build": "tsdown",
+    "build": "tsdown --dts",
     "format": "prettier --write ."
   },
   "keywords": [],

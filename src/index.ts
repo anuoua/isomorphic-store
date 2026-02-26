@@ -29,7 +29,7 @@ export {
   MemoryStorageAdapter,
   HistoryStateAdapter,
   NavigationStateAdapter
-} from './adapters';
+} from './adapters/index';
 
 // Factory
 export { StorageAdapterFactory } from './factory';

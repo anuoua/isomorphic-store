@@ -99,7 +99,7 @@ describe('DataStore - Error Handling', () => {
       // JSON.stringify removes functions, doesn't throw error
       // We save it and retrieve, the function will be lost
       store.set('func', objectWithFunction as any);
-      const retrieved = store.get('func');
+      const retrieved = store.get('func') as any;
       expect(retrieved.a).toBe(1);
       expect(retrieved.fn).toBeUndefined(); // Function is lost
 

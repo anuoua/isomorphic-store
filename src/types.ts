@@ -49,8 +49,9 @@ export interface DataStoreOptions<T = unknown> {
 export interface DataStoreEvent<T = unknown> {
   type: DataStoreEventType;
   key?: string;              // SET/REMOVE 时存在，CLEAR 时无
-  oldValue?: T;              // SET/REMOVE 时存在
-  newValue?: T;              // SET 时存在，REMOVE 时为 undefined
+  // oldValue/newValue may be null or undefined depending on operation
+  oldValue?: T | null | undefined;              // SET/REMOVE 时存在，可为 null
+  newValue?: T | null | undefined;              // SET 时存在，REMOVE 时为 undefined or null
   namespace: string;         // 命名空间
   timestamp: number;         // 事件发生时间戳（毫秒）
   source: any;               // 事件来源，指向 DataStore 实例

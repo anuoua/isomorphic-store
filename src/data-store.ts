@@ -44,7 +44,7 @@ export class DataStore<T = unknown> {
 
     // 设置外部变化回调
     if (this.adapter.setExternalChangeCallback) {
-      this.adapter.setExternalChangeCallback((event) => {
+      this.adapter.setExternalChangeCallback((event: DataStoreEvent<DataWithVersion<T>>) => {
         this.handleExternalChange(event);
       });
     }

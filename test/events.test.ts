@@ -266,7 +266,7 @@ describe('DataStore - Event System', () => {
 
   describe('Event ordering', () => {
     it('should trigger listeners in order', () => {
-      const calls = [];
+      const calls: number[] = [];
       const listener1 = () => calls.push(1);
       const listener2 = () => calls.push(2);
       const listener3 = () => calls.push(3);
