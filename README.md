@@ -226,6 +226,44 @@ globalNamespaceRegistry.register('indexeddb', new IndexedDBAdapter());
 const db = new IsomorphicStore('myapp', 'indexeddb');
 ```
 
+### 3.7 TypeScript Usage
+
+IsomorphicStore supports two TypeScript usage patterns:
+
+- Schema mode (recommended): pass a mapping type that maps each key to its value type. TypeScript will infer exact types per key.
+- Single-type mode (backward compatible): pass a single type `T` and all keys must conform to `T`.
+
+Example — Schema mode:
+
+```ts
+type AppSchema = {
+  user: { id: number; name: string };
+  theme: 'light' | 'dark';
+  isLoggedIn: boolean;
+};
+
+const store = new IsomorphicStore<AppSchema>('app', StorageStrategy.LOCAL);
+
+store.set('user', { id: 1, name: 'Alice' }); // ✅ type-safe
+store.set('theme', 'dark'); // ✅
+// store.set('theme', 'invalid'); // ❌ compile error
+
+const user = store.get('user'); // { id: number; name: string } | null
+```
+
+Example — Single-type mode (backward compatible):
+
+```ts
+const store = new IsomorphicStore<string>('strings', StorageStrategy.MEMORY);
+store.set('k1', 'value');
+const v = store.get('k1'); // string | null
+```
+
+Migration notes:
+
+- If you currently use a single-type store and want to migrate to Schema mode, first define the Schema type and then gradually update `set`/`get` usages per key. Schema is compile-time only and has no runtime overhead.
+- For dynamic or unknown keys, keep using a single-type (e.g. `any` or `unknown`), or include a more general entry in your Schema (e.g. an index signature).
+
 ---
 
 ## 4. API Reference

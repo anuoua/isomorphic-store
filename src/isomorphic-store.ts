@@ -156,12 +156,17 @@ export class IsomorphicStore<T = unknown> {
 
   /**
    * 设置数据
+   * 支持两种用法：
+   * 1. 单一类型：store.set(key, value)
+   * 2. Schema 类型：store.set<K>(key, value) 其中 T 是 Schema 对象
    */
-  set(key: string, value: T): void {
+  set<K extends string>(key: K, value: T extends Record<K, infer V> ? V : T): void;
+  set(key: string, value: T): void;
+  set(key: string, value: any): void {
     const storageKey = this.getStorageKey(key);
-    const oldValue = this.get(key);
+    const oldValue = this.get(key) as any;
 
-    const wrappedValue: DataWithVersion<T> = {
+    const wrappedValue: DataWithVersion<any> = {
       version: this.currentVersion,
       data: value
     };
@@ -182,8 +187,13 @@ export class IsomorphicStore<T = unknown> {
 
   /**
    * 获取数据
+   * 支持两种用法：
+   * 1. 单一类型：store.get(key) -> T | null
+   * 2. Schema 类型：store.get<K>(key) -> T[K] | null 其中 T 是 Schema 对象
    */
-  get(key: string): T | null {
+  get<K extends string>(key: K): T extends Record<K, infer V> ? V | null : T | null;
+  get(key: string): T | null;
+  get(key: string): any {
     const storageKey = this.getStorageKey(key);
     const wrappedValue = this.adapter.get(storageKey);
 
@@ -211,7 +221,7 @@ export class IsomorphicStore<T = unknown> {
    */
   remove(key: string): void {
     const storageKey = this.getStorageKey(key);
-    const oldValue = this.get(key);
+    const oldValue = this.get(key) as any;
 
     this.adapter.remove(storageKey);
 
@@ -294,8 +304,16 @@ export class IsomorphicStore<T = unknown> {
 
   /**
    * 获取数据或返回默认值
+   * 支持两种用法：
+   * 1. 单一类型：getOrDefault(key, defaultValue) -> T
+   * 2. Schema 类型：getOrDefault<K>(key, defaultValue) -> T[K] 其中 T 是 Schema
    */
-  getOrDefault(key: string, defaultValue: T): T {
+  getOrDefault<K extends string>(
+    key: K,
+    defaultValue: T extends Record<K, infer V> ? V : T
+  ): T extends Record<K, infer V> ? V : T;
+  getOrDefault(key: string, defaultValue: T): T;
+  getOrDefault(key: string, defaultValue: any): any {
     const value = this.get(key);
     return value !== null ? value : defaultValue;
   }
@@ -319,8 +337,16 @@ export class IsomorphicStore<T = unknown> {
 
   /**
    * 监听特定 key 的变化
+   * 支持两种用法：
+   * 1. 单一类型：onKey(key, listener) 监听任意 key
+   * 2. Schema 类型：onKey<K>(key, listener) 其中 T 是 Schema，listener 接收 T[K] 类型的事件
    */
-  onKey(key: string, listener: EventListener<T>): Unsubscribe {
+  onKey<K extends string>(
+    key: K,
+    listener: T extends Record<K, infer V> ? EventListener<V> : EventListener<T>
+  ): Unsubscribe;
+  onKey(key: string, listener: EventListener<T>): Unsubscribe;
+  onKey(key: string, listener: any): Unsubscribe {
     if (!this.keyListeners.has(key)) {
       this.keyListeners.set(key, new Set());
     }
@@ -340,7 +366,12 @@ export class IsomorphicStore<T = unknown> {
   /**
    * 取消监听特定 key 的变化
    */
-  offKey(key: string, listener: EventListener<T>): void {
+  offKey<K extends string>(
+    key: K,
+    listener: T extends Record<K, infer V> ? EventListener<V> : EventListener<T>
+  ): void;
+  offKey(key: string, listener: EventListener<T>): void;
+  offKey(key: string, listener: any): void {
     const listeners = this.keyListeners.get(key);
     if (listeners) {
       listeners.delete(listener);
@@ -362,8 +393,16 @@ export class IsomorphicStore<T = unknown> {
 
   /**
    * 一次性监听特定 key 的变化
+   * 支持两种用法：
+   * 1. 单一类型：onceKey(key, listener) 监听任意 key
+   * 2. Schema 类型：onceKey<K>(key, listener) 其中 T 是 Schema，listener 接收 T[K] 类型的事件
    */
-  onceKey(key: string, listener: EventListener<T>): Unsubscribe {
+  onceKey<K extends string>(
+    key: K,
+    listener: T extends Record<K, infer V> ? EventListener<V> : EventListener<T>
+  ): Unsubscribe;
+  onceKey(key: string, listener: EventListener<T>): Unsubscribe;
+  onceKey(key: string, listener: any): Unsubscribe {
     if (!this.onceKeyListeners.has(key)) {
       this.onceKeyListeners.set(key, new Set());
     }

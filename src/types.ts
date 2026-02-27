@@ -68,6 +68,22 @@ export type EventListener<T = unknown> = (event: IsomorphicStoreEvent<T>) => voi
 export type Unsubscribe = () => void;
 
 /**
+ * Schema 类型定义 - 用于为每个 key 指定不同的类型
+ * 例如：
+ * type MySchema = {
+ *   'user': { id: number; name: string };
+ *   'theme': 'light' | 'dark';
+ *   'count': number;
+ * };
+ */
+export type StoreSchema = Record<string, unknown>;
+
+/**
+ * 从 Schema 获取特定 key 的值类型
+ */
+export type SchemaValue<S extends StoreSchema, K extends keyof S> = S[K];
+
+/**
  * 存储适配器接口
  */
 export interface IStorageAdapter<T = unknown> {

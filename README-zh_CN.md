@@ -226,6 +226,44 @@ globalNamespaceRegistry.register('indexeddb', new IndexedDBAdapter());
 const db = new IsomorphicStore('myapp', 'indexeddb');
 ```
 
+### 3.7 Typescript 使用说明
+
+IsomorphicStore 在类型层面支持两种使用方式：
+
+- Schema 模式（每个 key 指定独立类型，推荐）：在创建 `IsomorphicStore` 时传入一个映射 key -> 类型 的泛型对象，TypeScript 会为每个 key 推断精确的类型。
+- 单一类型模式（所有 key 共享同一类型，向后兼容）：继续传入单个类型 `T`，此时所有 key 的值都必须符合 `T`。
+
+示例 — Schema 模式：
+
+```ts
+type AppSchema = {
+  user: { id: number; name: string };
+  theme: 'light' | 'dark';
+  isLoggedIn: boolean;
+};
+
+const store = new IsomorphicStore<AppSchema>('app', StorageStrategy.LOCAL);
+
+store.set('user', { id: 1, name: 'Alice' }); // ✅ 类型安全
+store.set('theme', 'dark'); // ✅
+// store.set('theme', 'invalid'); // ❌ 编译错误
+
+const user = store.get('user'); // { id: number; name: string } | null
+```
+
+示例 — 单一类型模式（向后兼容）：
+
+```ts
+const store = new IsomorphicStore<string>('strings', StorageStrategy.MEMORY);
+store.set('k1', 'value');
+const v = store.get('k1'); // string | null
+```
+
+迁移建议：
+
+- 如果当前代码使用单一类型但希望迁移到 Schema，请先在类型层面定义好 Schema，然后逐步将 `set`/`get` 调用替换为对应 key 的精确类型。Schema 仅影响编译期类型检查，不会在运行时产生开销。
+- 对于动态或未知 key，可保留单一类型（例如 `any` 或 `unknown`），或在 Schema 中使用更通用的条目（如索引签名）。
+
 ---
 
 ## 4. API 参考
