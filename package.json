@@ -10,6 +10,9 @@
     "format": "prettier --write ."
   },
   "keywords": [],
+  "files": [
+    "dist"
+  ],
   "author": "anuoua",
   "license": "MIT",
   "packageManager": "pnpm@10.23.0",
