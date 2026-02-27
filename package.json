@@ -1,6 +1,6 @@
 {
   "name": "isomorphic-store",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "",
   "module": "dist/index.mjs",
   "type": "module",
@@ -13,6 +13,10 @@
   "files": [
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/anuoua/isomorphic-store"
+  },
   "author": "anuoua",
   "license": "MIT",
   "packageManager": "pnpm@10.23.0",
