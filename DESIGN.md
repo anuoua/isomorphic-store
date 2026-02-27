@@ -38,6 +38,13 @@
 - 函数、Symbol、Proxy 等不可序列化的对象
 - 循环引用对象
 
+## 类型模式
+
+`IsomorphicStore` 以泛型参数 `T` 来表示存储数据的类型。为了提供灵活的类型检查，库支持两种模式：
+
+1. **Schema 模式**（推荐）：传入一个映射类型，为每个 key 指定不同的值类型
+2. **单一类型模式**（向后兼容）：传入单个类型 `T`，所有 key 的值都符合此类型
+
 ## 类设计
 
 ### 枚举：`StorageStrategy`
@@ -134,20 +141,34 @@ class IsomorphicStore<T = unknown> {
   );
 
   // 基础操作
-  set(key: string, value: T): void;
-  get(key: string): T | null;
+  // Schema 模式时，set/get/getOrDefault 会为每个 key 推断精确类型
+  set<K extends string>(key: K, value: T extends Record<K, infer V> ? V : T): void;
+  get<K extends string>(key: K): T extends Record<K, infer V> ? V | null : T | null;
   remove(key: string): void;
   clear(): void;
   hasKey(key: string): boolean;
-  getOrDefault(key: string, defaultValue: T): T;
+  getOrDefault<K extends string>(
+    key: K,
+    defaultValue: T extends Record<K, infer V> ? V : T
+  ): T extends Record<K, infer V> ? V : T;
 
   // 事件监听
+  // Schema 模式时，onKey/offKey/onceKey 会为特定 key 推断精确的事件值类型
   on(listener: EventListener<T>): Unsubscribe;
   off(listener: EventListener<T>): void;
-  onKey(key: string, listener: EventListener<T>): Unsubscribe;
-  offKey(key: string, listener: EventListener<T>): void;
+  onKey<K extends string>(
+    key: K,
+    listener: T extends Record<K, infer V> ? EventListener<V> : EventListener<T>
+  ): Unsubscribe;
+  offKey<K extends string>(
+    key: K,
+    listener: T extends Record<K, infer V> ? EventListener<V> : EventListener<T>
+  ): void;
   once(listener: EventListener<T>): Unsubscribe;
-  onceKey(key: string, listener: EventListener<T>): Unsubscribe;
+  onceKey<K extends string>(
+    key: K,
+    listener: T extends Record<K, infer V> ? EventListener<V> : EventListener<T>
+  ): Unsubscribe;
 }
 ```
 
@@ -184,17 +205,19 @@ constructor(
 
 #### 方法
 
-**`set(key: string, value: T): void`**
+**`set<K extends string>(key: K, value: T extends Record<K, infer V> ? V : T): void`**
 
 - 将数据存储在命名空间内的指定 key 下
+- **类型推断**（Schema 模式）：若 `T` 是 Schema 对象，value 的类型被推断为 `T[K]`，提供编译期类型检查
 - 自动添加当前版本号（以 `DataWithVersion` 结构存储）
 - 自动序列化（若需要）
 - 若存储空间满，根据策略的回退机制处理
 - 发出 SET 事件
 
-**`get(key: string): T | null`**
+**`get<K extends string>(key: K): T extends Record<K, infer V> ? V | null : T | null`**
 
 - 从命名空间内读取指定 key 的数据
+- **类型推断**（Schema 模式）：返回值类型被推断为 `T[K] | null`，与对应 key 的类型定义一致
 - 自动检测数据版本
 - **若版本低于当前版本**，自动执行迁移链（v1→v2→v3...）
 - 迁移后自动写回最新版本的数据（覆盖旧版本）
@@ -214,9 +237,10 @@ constructor(
 
 - 检查指定 key 是否存在
 
-**`getOrDefault(key: string, defaultValue: T): T`**
+**`getOrDefault<K extends string>(key: K, defaultValue: T extends Record<K, infer V> ? V : T): T extends Record<K, infer V> ? V : T`**
 
 - 获取数据，若不存在则返回默认值
+- **类型推断**（Schema 模式）：返回值类型与 defaultValue 类型一致，当 defaultValue 存在时，返回值不包含 `null`
 
 #### 事件监听方法
 
@@ -230,15 +254,17 @@ constructor(
 
 - 取消监听全局变化
 
-**`onKey(key: string, listener: EventListener<T>): Unsubscribe`**
+**`onKey<K extends string>(key: K, listener: T extends Record<K, infer V> ? EventListener<V> : EventListener<T>): Unsubscribe`**
 
 - 监听特定 key 的变化
+- **类型推断**（Schema 模式）：listener 接收的事件值类型被推断为 `T[K]`，与该 key 的类型定义一致
 - 仅当该 key 被 set 或 remove 时触发
 - 返回取消订阅函数
 
-**`offKey(key: string, listener: EventListener<T>): void`**
+**`offKey<K extends string>(key: K, listener: T extends Record<K, infer V> ? EventListener<V> : EventListener<T>): void`**
 
 - 取消监听特定 key 的变化
+- **类型推断**（Schema 模式）：lisenr 类型与 对应 key 的事件类型一致
 
 **`once(listener: EventListener<T>): Unsubscribe`**
 
@@ -246,9 +272,10 @@ constructor(
 - 触发后自动取消
 - 返回取消订阅函数
 
-**`onceKey(key: string, listener: EventListener<T>): Unsubscribe`**
+**`onceKey<K extends string>(key: K, listener: T extends Record<K, infer V> ? EventListener<V> : EventListener<T>): Unsubscribe`**
 
 - 一次性监听特定 key 的变化
+- **类型推断**（Schema 模式）：listener 接收的事件值类型被推断为 `T[K]`，与该 key 的类型定义一致
 - 触发后自动取消
 - 返回取消订阅函数
 

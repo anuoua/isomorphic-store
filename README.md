@@ -15,7 +15,31 @@ Key Features:
 
 ---
 
-## 2. Installation
+## 2. Core Concepts
+
+### Storage Strategies
+
+IsomorphicStore supports five storage strategies, each representing different lifecycles:
+
+| Strategy       | Storage Location                | Lifecycle              | Capacity | Use Cases                              |
+| -------------- | ------------------------------- | ---------------------- | -------- | -------------------------------------- |
+| **LOCAL**      | `localStorage`                  | Cross-session, cross-tab persistence | 5-10MB   | User preferences, settings, long-term cache |
+| **SESSION**    | `sessionStorage`                | Current tab session    | 5-10MB   | Temporary session data, temporary state |
+| **MEMORY**     | Memory heap                     | Page runtime           | Unlimited | Computation cache, performance optimization, temporary data |
+| **HISTORY**    | `history.state`                 | Current history entry  | Same-origin limit | Page navigation state, form recovery |
+| **NAVIGATION** | `navigation.currentEntry.state` | Current navigation entry (new API) | Same-origin limit | Modern Web App navigation state |
+
+### Core Principles
+
+1. **Strategy Binding**: Each `IsomorphicStore` instance specifies a strategy during construction, and all subsequent operations use this strategy.
+2. **Namespace Isolation**: Each `IsomorphicStore` has its own isolated namespace to prevent data conflicts between different modules or applications.
+3. **Conflict Detection**: The same namespace cannot be occupied by multiple `IsomorphicStore` instances; otherwise, an error is thrown.
+4. **Cross-Storage Coordination**: If your business requires operations across different storage strategies, create multiple `IsomorphicStore` instances and coordinate them manually.
+5. **Automatic Initialization**: The storage location is automatically initialized during construction to ensure data structure integrity.
+
+---
+
+## 3. Installation
 
 Install using your preferred package manager:
 
@@ -32,9 +56,9 @@ yarn add isomorphic-store
 
 ---
 
-## 3. Usage
+## 4. Usage
 
-### 3.1 Basic Example
+### 4.1 Basic Example
 
 Create a simple store and perform basic CRUD operations:
 
@@ -61,11 +85,11 @@ store.clear();
 store.destroy();
 ```
 
-### 3.2 Storage Strategies
+### 4.2 Storage Strategies
 
 IsomorphicStore provides five built-in storage strategies. Choose based on your requirements:
 
-#### 3.2.1 LOCAL (localStorage)
+#### 4.2.1 LOCAL (localStorage)
 
 Data persists across browser sessions. Suitable for long-term configurations and user preferences.
 
@@ -75,7 +99,7 @@ settings.set('theme', 'dark');
 // Data remains after browser reload
 ```
 
-#### 3.2.2 SESSION (sessionStorage)
+#### 4.2.2 SESSION (sessionStorage)
 
 Session-scoped persistence. Data is cleared when the tab closes. Suitable for session-level temporary data.
 
@@ -84,7 +108,7 @@ const session = new IsomorphicStore('session', StorageStrategy.SESSION);
 session.set('authToken', 'abc123');
 ```
 
-#### 3.2.3 MEMORY
+#### 4.2.3 MEMORY
 
 In-memory storage cleared when the process terminates. Suitable for application runtime-only temporary state.
 
@@ -93,7 +117,7 @@ const cache = new IsomorphicStore('cache', StorageStrategy.MEMORY);
 cache.set('cachedList', [1, 2, 3]);
 ```
 
-#### 3.2.4 HISTORY (history.state)
+#### 4.2.4 HISTORY (history.state)
 
 Uses the browser History API, integrated with routing. Suitable for intermediate workflow states.
 
@@ -102,7 +126,7 @@ const flow = new IsomorphicStore('flow', StorageStrategy.HISTORY);
 flow.set('currentStep', 2);
 ```
 
-#### 3.2.5 NAVIGATION (navigation.state)
+#### 4.2.5 NAVIGATION (navigation.state)
 
 Asynchronous Navigation API for cross-tab navigation context.
 
@@ -111,7 +135,7 @@ const nav = new IsomorphicStore('nav', StorageStrategy.NAVIGATION);
 nav.set('destination', '/home');
 ```
 
-### 3.3 Event Subscription
+### 4.3 Event Subscription
 
 Monitor data changes and respond in real-time:
 
@@ -134,7 +158,7 @@ store.set('count', 1); // Trigger subscription
 unsubscribe();
 ```
 
-### 3.4 Versioning and Migration
+### 4.4 Versioning and Migration
 
 Automatically migrate existing data when the data structure is upgraded—no manual transformation required:
 
@@ -185,7 +209,7 @@ const store = new IsomorphicStore('data', StorageStrategy.LOCAL, {
 });
 ```
 
-### 3.5 Namespacing
+### 4.5 Namespacing
 
 Each IsomorphicStore instance isolates data through namespaces, preventing conflicts:
 
@@ -204,7 +228,7 @@ console.log(settingsStore.get('theme')); // 'dark'
 console.log(userStore.get('theme')); // null
 ```
 
-### 3.6 Custom Adapters
+### 4.6 Custom Adapters
 
 Extend storage capabilities by registering custom adapters:
 
@@ -226,7 +250,7 @@ globalNamespaceRegistry.register('indexeddb', new IndexedDBAdapter());
 const db = new IsomorphicStore('myapp', 'indexeddb');
 ```
 
-### 3.7 TypeScript Usage
+### 4.7 TypeScript Usage
 
 IsomorphicStore supports two TypeScript usage patterns:
 
@@ -266,7 +290,7 @@ Migration notes:
 
 ---
 
-## 4. API Reference
+## 5. API Reference
 
 ### IsomorphicStore Class
 
@@ -426,7 +450,7 @@ import {
 
 ---
 
-## 5. License
+## 6. License
 
 MIT License
 

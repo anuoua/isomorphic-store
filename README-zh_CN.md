@@ -15,7 +15,31 @@ IsomorphicStore 是一个轻量级且灵活的 TypeScript 存储库，为浏览�
 
 ---
 
-## 2. 安装
+## 2. 核心概念
+
+### 存储策略
+
+IsomorphicStore 支持以下五种存储策略，各代表不同的生命周期：
+
+| 策略           | 存储位置                        | 生命周期               | 容量     | 用途                         |
+| -------------- | ------------------------------- | ---------------------- | -------- | ---------------------------- |
+| **LOCAL**      | `localStorage`                  | 跨会话、跨标签页持久化 | 5-10MB   | 用户偏好、设置、长期缓存     |
+| **SESSION**    | `sessionStorage`                | 当前标签页会话期间     | 5-10MB   | 临时会话数据、临时状态       |
+| **MEMORY**     | 内存堆                          | 页面运行期间           | 无限制   | 计算缓存、性能优化、临时数据 |
+| **HISTORY**    | `history.state`                 | 当前历史记录条目       | 同源限制 | 页面内导航状态、表单恢复     |
+| **NAVIGATION** | `navigation.currentEntry.state` | 当前导航条目（新 API） | 同源限制 | 新式 Web App 导航状态        |
+
+### 核心原则
+
+1. **策略绑定**：每个 `IsomorphicStore` 实例在构造时指定一个策略，此后该实例的所有操作都使用此策略。
+2. **命名空间隔离**：每个 `IsomorphicStore` 占有独立的命名空间，防止不同模块或应用数据冲突。
+3. **冲突检测**：同一命名空间不能被多个 `IsomorphicStore` 占用，否则抛出错误。
+4. **跨存储协调**：若业务需要跨不同存储策略操作，由用户创建多个 `IsomorphicStore` 实例并手动协调。
+5. **自动初始化**：构造时自动初始化存储位置，确保数据结构完整。
+
+---
+
+## 3. 安装
 
 使用包管理器安装：
 
@@ -32,9 +56,9 @@ yarn add isomorphic-store
 
 ---
 
-## 3. 使用
+## 4. 使用
 
-### 3.1 基础示例
+### 4.1 基础示例
 
 创建一个简单的存储并执行 CRUD 操作：
 
@@ -61,11 +85,11 @@ store.clear();
 store.destroy();
 ```
 
-### 3.2 存储策略
+### 4.2 存储策略
 
 IsomorphicStore 提供5种内置存储策略，可根据需求选择：
 
-#### 3.2.1 LOCAL (localStorage)
+#### 4.2.1 LOCAL (localStorage)
 
 数据持久化，关闭浏览器后仍保留。用于长期配置和用户偏好。
 
@@ -75,7 +99,7 @@ settings.set('theme', 'dark');
 // 刷新页面后数据仍存在
 ```
 
-#### 3.2.2 SESSION (sessionStorage)
+#### 4.2.2 SESSION (sessionStorage)
 
 会话级持久化，标签页关闭时清除。用于会话范围的临时数据。
 
@@ -84,7 +108,7 @@ const session = new IsomorphicStore('session', StorageStrategy.SESSION);
 session.set('authToken', 'abc123');
 ```
 
-#### 3.2.3 MEMORY
+#### 4.2.3 MEMORY
 
 内存存储，进程结束后清除。用于仅需应用运行期间的临时状态。
 
@@ -93,7 +117,7 @@ const cache = new IsomorphicStore('cache', StorageStrategy.MEMORY);
 cache.set('cachedList', [1, 2, 3]);
 ```
 
-#### 3.2.4 HISTORY (history.state)
+#### 4.2.4 HISTORY (history.state)
 
 使用浏览器历史 API，与路由集成。用于流程中间状态。
 
@@ -102,7 +126,7 @@ const flow = new IsomorphicStore('flow', StorageStrategy.HISTORY);
 flow.set('currentStep', 2);
 ```
 
-#### 3.2.5 NAVIGATION (navigation.state)
+#### 4.2.5 NAVIGATION (navigation.state)
 
 异步导航 API，用于跨标签页导航上下文。
 
@@ -111,7 +135,7 @@ const nav = new IsomorphicStore('nav', StorageStrategy.NAVIGATION);
 nav.set('destination', '/home');
 ```
 
-### 3.3 事件订阅
+### 4.3 事件订阅
 
 监听数据变化，实现实时响应：
 
@@ -134,7 +158,7 @@ store.set('count', 1); // 触发订阅
 unsubscribe();
 ```
 
-### 3.4 版本与迁移
+### 4.4 版本与迁移
 
 数据结构升级时，自动迁移已有数据无需手动转换：
 
@@ -185,7 +209,7 @@ const store = new IsomorphicStore('data', StorageStrategy.LOCAL, {
 });
 ```
 
-### 3.5 命名空间
+### 4.5 命名空间
 
 每个 IsomorphicStore 实例通过命名空间隔离数据，防止冲突：
 
@@ -204,7 +228,7 @@ console.log(settingsStore.get('theme')); // 'dark'
 console.log(userStore.get('theme')); // null
 ```
 
-### 3.6 自定义适配器
+### 4.6 自定义适配器
 
 扩展存储能力，注册自定义适配器：
 
@@ -226,7 +250,7 @@ globalNamespaceRegistry.register('indexeddb', new IndexedDBAdapter());
 const db = new IsomorphicStore('myapp', 'indexeddb');
 ```
 
-### 3.7 Typescript 使用说明
+### 4.7 Typescript 使用说明
 
 IsomorphicStore 在类型层面支持两种使用方式：
 
@@ -266,7 +290,7 @@ const v = store.get('k1'); // string | null
 
 ---
 
-## 4. API 参考
+## 5. API 参考
 
 ### IsomorphicStore 类
 
@@ -426,7 +450,7 @@ import {
 
 ---
 
-## 5. 证书
+## 6. 证书
 
 MIT License
 
