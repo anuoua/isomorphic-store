@@ -5,19 +5,26 @@ import { SerializationError, StorageQuotaExceededError } from '../errors';
  * sessionStorage 适配器
  */
 export class SessionStorageAdapter<T = unknown> implements IStorageAdapter<T> {
+  private namespace: string;
   private externalChangeCallback?: (event: IsomorphicStoreEvent<T>) => void;
 
-  constructor() {
+  constructor(namespace: string) {
+    this.namespace = namespace;
+
     // 监听其他标签页的 storage 事件
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', (event) => {
         if (event.key && this.externalChangeCallback) {
+          const prefix = `${this.namespace}:`;
+          if (!event.key.startsWith(prefix)) return;
+
+          const rawKey = event.key.slice(prefix.length);
           this.externalChangeCallback({
             type: 'set' as any,
-            key: event.key,
+            key: rawKey,
             newValue: event.newValue ? JSON.parse(event.newValue) : undefined,
             oldValue: event.oldValue ? JSON.parse(event.oldValue) : undefined,
-            namespace: '',
+            namespace: this.namespace,
             timestamp: Date.now(),
             source: this
           });
@@ -26,13 +33,17 @@ export class SessionStorageAdapter<T = unknown> implements IStorageAdapter<T> {
     }
   }
 
+  private getStorageKey(key: string): string {
+    return `${this.namespace}:${key}`;
+  }
+
   get(key: string): T | null {
     if (typeof window === 'undefined' || !window.sessionStorage) {
       return null;
     }
 
     try {
-      const value = window.sessionStorage.getItem(key);
+      const value = window.sessionStorage.getItem(this.getStorageKey(key));
       if (value === null) {
         return null;
       }
@@ -49,7 +60,7 @@ export class SessionStorageAdapter<T = unknown> implements IStorageAdapter<T> {
 
     try {
       const serialized = JSON.stringify(value);
-      window.sessionStorage.setItem(key, serialized);
+      window.sessionStorage.setItem(this.getStorageKey(key), serialized);
     } catch (error) {
       if (error instanceof DOMException && error.name === 'QuotaExceededError') {
         throw new StorageQuotaExceededError('', 'sessionStorage');
@@ -62,21 +73,32 @@ export class SessionStorageAdapter<T = unknown> implements IStorageAdapter<T> {
     if (typeof window === 'undefined' || !window.sessionStorage) {
       return;
     }
-    window.sessionStorage.removeItem(key);
+    window.sessionStorage.removeItem(this.getStorageKey(key));
   }
 
   clear(): void {
     if (typeof window === 'undefined' || !window.sessionStorage) {
       return;
     }
-    window.sessionStorage.clear();
+
+    const prefix = `${this.namespace}:`;
+    const keysToDelete: string[] = [];
+    for (let i = 0; i < window.sessionStorage.length; i++) {
+      const k = window.sessionStorage.key(i);
+      if (k && k.startsWith(prefix)) {
+        keysToDelete.push(k);
+      }
+    }
+    for (const k of keysToDelete) {
+      window.sessionStorage.removeItem(k);
+    }
   }
 
   hasKey(key: string): boolean {
     if (typeof window === 'undefined' || !window.sessionStorage) {
       return false;
     }
-    return window.sessionStorage.getItem(key) !== null;
+    return window.sessionStorage.getItem(this.getStorageKey(key)) !== null;
   }
 
   setExternalChangeCallback(callback: (event: IsomorphicStoreEvent<T>) => void): void {

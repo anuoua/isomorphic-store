@@ -46,42 +46,25 @@ export interface IsomorphicStoreOptions<T = unknown> {
 /**
  * 数据变化事件对象
  */
-export interface IsomorphicStoreEvent<T = unknown> {
+export interface IsomorphicStoreEvent<V = unknown> {
   type: IsomorphicStoreEventType;
   key?: string;              // SET/REMOVE 时存在，CLEAR 时无
-  // oldValue/newValue may be null or undefined depending on operation
-  oldValue?: T | null | undefined;              // SET/REMOVE 时存在，可为 null
-  newValue?: T | null | undefined;              // SET 时存在，REMOVE 时为 undefined or null
-  namespace: string;         // 命名空间
-  timestamp: number;         // 事件发生时间戳（毫秒）
-  source: any;               // 事件来源，指向 IsomorphicStore 实例
+  oldValue?: V | null | undefined;
+  newValue?: V | null | undefined;
+  namespace: string;
+  timestamp: number;
+  source: any;
 }
 
 /**
  * 事件监听器类型
  */
-export type EventListener<T = unknown> = (event: IsomorphicStoreEvent<T>) => void;
+export type EventListener<V = unknown> = (event: IsomorphicStoreEvent<V>) => void;
 
 /**
  * 取消订阅函数类型
  */
 export type Unsubscribe = () => void;
-
-/**
- * Schema 类型定义 - 用于为每个 key 指定不同的类型
- * 例如：
- * type MySchema = {
- *   'user': { id: number; name: string };
- *   'theme': 'light' | 'dark';
- *   'count': number;
- * };
- */
-export type StoreSchema = Record<string, unknown>;
-
-/**
- * 从 Schema 获取特定 key 的值类型
- */
-export type SchemaValue<S extends StoreSchema, K extends keyof S> = S[K];
 
 /**
  * 存储适配器接口

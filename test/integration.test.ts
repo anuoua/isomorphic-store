@@ -29,40 +29,36 @@ describe('IsomorphicStore - Integration Tests', () => {
 
   describe('Real-world scenarios', () => {
     it('should handle user preferences workflow', () => {
-      const store = new IsomorphicStore<{ theme: string; fontSize: number }>(
+      type PrefsSchema = { theme: string; fontSize: number };
+      const store = new IsomorphicStore<PrefsSchema>(
         'app.prefs',
         StorageStrategy.LOCAL
       );
 
-      // User sets preferences
-      store.set('theme', { theme: 'dark', fontSize: 14 } as any);
+      store.set('theme', 'dark');
+      store.set('fontSize', 14);
 
-      // User modifies preferences
-      let prefs = store.get('theme');
-      expect(prefs?.theme).toBe('dark');
+      expect(store.get('theme')).toBe('dark');
+      expect(store.get('fontSize')).toBe(14);
 
-      // User changes theme
-      store.set('theme', { theme: 'light', fontSize: 14 } as any);
-      prefs = store.get('theme');
-      expect(prefs?.theme).toBe('light');
+      store.set('theme', 'light');
+      expect(store.get('theme')).toBe('light');
 
       store.destroy();
     });
 
     it('should handle session data workflow', () => {
-      const sessionStore = new IsomorphicStore<{ userId: number; token: string }>(
+      type SessionSchema = { auth: { userId: number; token: string } };
+      const sessionStore = new IsomorphicStore<SessionSchema>(
         'app.session',
         StorageStrategy.SESSION
       );
 
-      // User logs in
-      sessionStore.set('auth', { userId: 123, token: 'abc-def' } as any);
+      sessionStore.set('auth', { userId: 123, token: 'abc-def' });
 
-      // Check authentication
       const auth = sessionStore.get('auth');
       expect(auth?.userId).toBe(123);
 
-      // User logs out
       sessionStore.remove('auth');
       expect(sessionStore.get('auth')).toBeNull();
 
@@ -70,30 +66,27 @@ describe('IsomorphicStore - Integration Tests', () => {
     });
 
     it('should handle multi-store coordination', () => {
-      const localStorage = new IsomorphicStore('app.local', StorageStrategy.LOCAL);
-      const memoryStore = new IsomorphicStore('app.memory', StorageStrategy.MEMORY);
+      type ConfigSchema = { config: { apiUrl: string } };
+      const localStorage = new IsomorphicStore<ConfigSchema>('app.local', StorageStrategy.LOCAL);
+      const memoryStore = new IsomorphicStore<ConfigSchema>('app.memory', StorageStrategy.MEMORY);
 
-      // Initialize memory from localStorage
-      type ConfigType = { apiUrl: string };
-      const saved = localStorage.get('config') as ConfigType | null;
+      const saved = localStorage.get('config');
       if (saved === null) {
-        const defaultConfig: ConfigType = { apiUrl: 'https://api.example.com' };
-        localStorage.set('config', defaultConfig as any);
-        memoryStore.set('config', defaultConfig as any);
+        const defaultConfig = { apiUrl: 'https://api.example.com' };
+        localStorage.set('config', defaultConfig);
+        memoryStore.set('config', defaultConfig);
       } else {
         memoryStore.set('config', saved);
       }
 
-      // Modify in memory
       let config = memoryStore.get('config');
-      expect((config as any).apiUrl).toBe('https://api.example.com');
+      expect(config?.apiUrl).toBe('https://api.example.com');
 
-      // Sync back to localStorage
       config = memoryStore.get('config');
-      localStorage.set('config', config as any);
+      if (config) localStorage.set('config', config);
 
       const savedConfig = localStorage.get('config');
-      expect((savedConfig as any).apiUrl).toBe('https://api.example.com');
+      expect(savedConfig?.apiUrl).toBe('https://api.example.com');
 
       localStorage.destroy();
       memoryStore.destroy();
@@ -129,7 +122,7 @@ describe('IsomorphicStore - Integration Tests', () => {
         ]
       });
 
-      const migratedUser = storeV2.get('user');
+      const migratedUser = storeV2.get('user') as any;
       expect(migratedUser.profile.displayName).toBe('John');
       expect(migratedUser.profile.email).toBe('john@example.com');
       expect(migratedUser.profile.createdAt).toBeDefined();
@@ -138,7 +131,8 @@ describe('IsomorphicStore - Integration Tests', () => {
     });
 
     it('should handle caching workflow', () => {
-      const cache = new IsomorphicStore<{ data: string; timestamp: number }>(
+      type CacheSchema = { query1: { data: string; timestamp: number } };
+      const cache = new IsomorphicStore<CacheSchema>(
         'app.cache',
         StorageStrategy.MEMORY
       );
@@ -147,19 +141,16 @@ describe('IsomorphicStore - Integration Tests', () => {
         return { data: 'expensive result', timestamp: Date.now() };
       };
 
-      // Check cache
       let cachedResult = cache.get('query1');
 
       if (cachedResult === null) {
-        // Cache miss - call API
         const result = apiCall();
-        cache.set('query1', result as any);
-        cachedResult = result as any;
+        cache.set('query1', result);
+        cachedResult = result;
       }
 
       expect(cachedResult!.data).toBe('expensive result');
 
-      // Second access - from cache
       const cachedResult2 = cache.get('query1');
       expect(cachedResult2).toEqual(cachedResult);
 
@@ -167,30 +158,27 @@ describe('IsomorphicStore - Integration Tests', () => {
     });
 
     it('should handle form state recovery', () => {
-      const historyStore = new IsomorphicStore<{ step: number; data: Record<string, any> }>(
+      type FormSchema = {
+        state: { step: number; data: Record<string, any> };
+      };
+      const historyStore = new IsomorphicStore<FormSchema>(
         'app.form',
         StorageStrategy.HISTORY
       );
 
-      // User fills form step 1
       historyStore.set('state', {
         step: 1,
         data: { name: 'Alice', email: 'alice@example.com' }
-      } as any);
+      });
 
-      // User navigates to step 2
       historyStore.set('state', {
         step: 2,
         data: { name: 'Alice', email: 'alice@example.com', phone: '123-456' }
-      } as any);
+      });
 
-      // Check current state
       let state = historyStore.get('state');
       expect(state?.step).toBe(2);
       expect(state?.data.phone).toBe('123-456');
-
-      // If user goes back (popstate), state would be restored
-      // (In real scenario, browser handles this)
 
       historyStore.destroy();
     });

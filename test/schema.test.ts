@@ -157,39 +157,6 @@ describe('IsomorphicStore - Schema Type Support', () => {
     });
   });
 
-  describe('Backward compatibility with single type', () => {
-    let store: IsomorphicStore<string>;
-
-    beforeEach(() => {
-      store = new IsomorphicStore<string>('single-type', StorageStrategy.MEMORY);
-    });
-
-    afterEach(() => {
-      store.destroy();
-    });
-
-    it('should still work with single type (string)', () => {
-      store.set('key1', 'value1');
-      store.set('key2', 'value2');
-
-      expect(store.get('key1')).toBe('value1');
-      expect(store.get('key2')).toBe('value2');
-    });
-
-    it('should work with object type', () => {
-      const objStore = new IsomorphicStore<{ id: number; name: string }>(
-        'obj-type',
-        StorageStrategy.MEMORY
-      );
-
-      objStore.set('person1', { id: 1, name: 'Alice' });
-      const person = objStore.get('person1');
-      expect(person?.name).toBe('Alice');
-
-      objStore.destroy();
-    });
-  });
-
   describe('Schema with complex types', () => {
     type ComplexSchema = {
       'config': {

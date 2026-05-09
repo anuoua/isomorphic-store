@@ -60,28 +60,25 @@ yarn add isomorphic-store
 
 ### 4.1 Basic Example
 
-Create a simple store and perform basic CRUD operations:
+Define a schema, create a store, and perform CRUD operations:
 
 ```ts
 import { IsomorphicStore, StorageStrategy } from 'isomorphic-store';
 
-// Create an in-memory store
-const store = new IsomorphicStore('my-app:state', StorageStrategy.MEMORY);
+type AppSchema = {
+  username: string;
+  theme: 'light' | 'dark';
+};
 
-// Set data
+const store = new IsomorphicStore<AppSchema>('my-app:state', StorageStrategy.MEMORY);
+
 store.set('username', 'Alice');
 store.set('theme', 'dark');
 
-// Read data
 console.log(store.get('username')); // 'Alice'
 
-// Remove a single item
 store.remove('theme');
-
-// Clear all data
 store.clear();
-
-// Destroy the store instance
 store.destroy();
 ```
 
@@ -94,9 +91,9 @@ IsomorphicStore provides five built-in storage strategies. Choose based on your 
 Data persists across browser sessions. Suitable for long-term configurations and user preferences.
 
 ```ts
-const settings = new IsomorphicStore('settings', StorageStrategy.LOCAL);
+type SettingsSchema = { theme: string };
+const settings = new IsomorphicStore<SettingsSchema>('settings', StorageStrategy.LOCAL);
 settings.set('theme', 'dark');
-// Data remains after browser reload
 ```
 
 #### 4.2.2 SESSION (sessionStorage)
@@ -104,7 +101,8 @@ settings.set('theme', 'dark');
 Session-scoped persistence. Data is cleared when the tab closes. Suitable for session-level temporary data.
 
 ```ts
-const session = new IsomorphicStore('session', StorageStrategy.SESSION);
+type SessionSchema = { authToken: string };
+const session = new IsomorphicStore<SessionSchema>('session', StorageStrategy.SESSION);
 session.set('authToken', 'abc123');
 ```
 
@@ -113,7 +111,8 @@ session.set('authToken', 'abc123');
 In-memory storage cleared when the process terminates. Suitable for application runtime-only temporary state.
 
 ```ts
-const cache = new IsomorphicStore('cache', StorageStrategy.MEMORY);
+type CacheSchema = { cachedList: number[] };
+const cache = new IsomorphicStore<CacheSchema>('cache', StorageStrategy.MEMORY);
 cache.set('cachedList', [1, 2, 3]);
 ```
 
@@ -122,7 +121,8 @@ cache.set('cachedList', [1, 2, 3]);
 Uses the browser History API, integrated with routing. Suitable for intermediate workflow states.
 
 ```ts
-const flow = new IsomorphicStore('flow', StorageStrategy.HISTORY);
+type FlowSchema = { currentStep: number };
+const flow = new IsomorphicStore<FlowSchema>('flow', StorageStrategy.HISTORY);
 flow.set('currentStep', 2);
 ```
 
@@ -131,7 +131,8 @@ flow.set('currentStep', 2);
 Asynchronous Navigation API for cross-tab navigation context.
 
 ```ts
-const nav = new IsomorphicStore('nav', StorageStrategy.NAVIGATION);
+type NavSchema = { destination: string };
+const nav = new IsomorphicStore<NavSchema>('nav', StorageStrategy.NAVIGATION);
 nav.set('destination', '/home');
 ```
 
@@ -140,36 +141,44 @@ nav.set('destination', '/home');
 Monitor data changes and respond in real-time:
 
 ```ts
-const store = new IsomorphicStore('app', StorageStrategy.MEMORY);
+type AppSchema = { count: number };
+const store = new IsomorphicStore<AppSchema>('app', StorageStrategy.MEMORY);
 
 // Subscribe to all changes
-const unsubscribe = store.subscribe(event => {
+const unsubscribe = store.on(event => {
   console.log(`Event: ${event.type}`);
   console.log(`Key: ${event.key}`);
   console.log(`Old Value: ${event.oldValue}`);
   console.log(`New Value: ${event.newValue}`);
-  console.log(`Timestamp: ${event.timestamp}`);
 });
 
-store.set('count', 1); // Trigger subscription
-// Output: Event: set, Key: count, New Value: 1
+store.set('count', 1); // Triggers subscription
 
-// Unsubscribe
+// Subscribe to a specific key
+const unsubKey = store.onKey('count', event => {
+  console.log(`Count changed to ${event.newValue}`);
+});
+
 unsubscribe();
+unsubKey();
 ```
 
 ### 4.4 Versioning and Migration
 
-Automatically migrate existing data when the data structure is upgraded—no manual transformation required:
+Automatically migrate existing data when the data structure is upgraded:
 
 ```ts
+type UserSchema = {
+  profile: { name: string; age: number; joinedAt?: number };
+};
+
 // Version 1 data
-const storeV1 = new IsomorphicStore('user', StorageStrategy.LOCAL, { version: 1 });
+const storeV1 = new IsomorphicStore<UserSchema>('user', StorageStrategy.LOCAL, { version: 1 });
 storeV1.set('profile', { name: 'Alice', age: 25 });
 storeV1.destroy();
 
 // Upgrade to version 2 with migration rules
-const storeV2 = new IsomorphicStore('user', StorageStrategy.LOCAL, {
+const storeV2 = new IsomorphicStore<UserSchema>('user', StorageStrategy.LOCAL, {
   version: 2,
   migrations: [
     {
@@ -178,35 +187,14 @@ const storeV2 = new IsomorphicStore('user', StorageStrategy.LOCAL, {
       migrate: (data) => ({
         name: data.name,
         age: data.age,
-        joinedAt: Date.now() // New field
+        joinedAt: Date.now()
       })
     }
   ]
 });
 
-// Data is automatically migrated on read
 const profile = storeV2.get('profile');
 console.log(profile); // { name: 'Alice', age: 25, joinedAt: 1709... }
-```
-
-Multi-level migration:
-
-```ts
-const store = new IsomorphicStore('data', StorageStrategy.LOCAL, {
-  version: 3,
-  migrations: [
-    {
-      from: 1,
-      to: 2,
-      migrate: data => ({ ...data, v2: true })
-    },
-    {
-      from: 2,
-      to: 3,
-      migrate: data => ({ ...data, timestamp: Date.now() })
-    }
-  ]
-});
 ```
 
 ### 4.5 Namespacing
@@ -214,50 +202,23 @@ const store = new IsomorphicStore('data', StorageStrategy.LOCAL, {
 Each IsomorphicStore instance isolates data through namespaces, preventing conflicts:
 
 ```ts
-// User module
-const userStore = new IsomorphicStore('user:profile', StorageStrategy.LOCAL);
-userStore.set('name', 'Alice');
+type UserSchema = { name: string };
+type SettingsSchema = { theme: string };
 
-// Settings module
-const settingsStore = new IsomorphicStore('app:settings', StorageStrategy.LOCAL);
+const userStore = new IsomorphicStore<UserSchema>('user:profile', StorageStrategy.LOCAL);
+const settingsStore = new IsomorphicStore<SettingsSchema>('app:settings', StorageStrategy.LOCAL);
+
+userStore.set('name', 'Alice');
 settingsStore.set('theme', 'dark');
 
-// Each operates independently
-console.log(userStore.get('name')); // 'Alice'
+console.log(userStore.get('name'));   // 'Alice'
 console.log(settingsStore.get('theme')); // 'dark'
-console.log(userStore.get('theme')); // null
+console.log(userStore.get('theme'));  // null — different namespace
 ```
 
-### 4.6 Custom Adapters
+### 4.6 TypeScript Usage
 
-Extend storage capabilities by registering custom adapters:
-
-```ts
-import { globalNamespaceRegistry } from 'isomorphic-store';
-
-class IndexedDBAdapter {
-  get(key) { /* implementation */ }
-  set(key, value) { /* implementation */ }
-  remove(key) { /* implementation */ }
-  clear() { /* implementation */ }
-  hasKey(key) { /* implementation */ }
-}
-
-// Register custom adapter
-globalNamespaceRegistry.register('indexeddb', new IndexedDBAdapter());
-
-// Use it
-const db = new IsomorphicStore('myapp', 'indexeddb');
-```
-
-### 4.7 TypeScript Usage
-
-IsomorphicStore supports two TypeScript usage patterns:
-
-- Schema mode (recommended): pass a mapping type that maps each key to its value type. TypeScript will infer exact types per key.
-- Single-type mode (backward compatible): pass a single type `T` and all keys must conform to `T`.
-
-Example — Schema mode:
+`IsomorphicStore<T>` requires `T` to be a record type mapping keys to their value types (a "schema"). TypeScript infers exact types per key:
 
 ```ts
 type AppSchema = {
@@ -268,25 +229,23 @@ type AppSchema = {
 
 const store = new IsomorphicStore<AppSchema>('app', StorageStrategy.LOCAL);
 
-store.set('user', { id: 1, name: 'Alice' }); // ✅ type-safe
-store.set('theme', 'dark'); // ✅
-// store.set('theme', 'invalid'); // ❌ compile error
+store.set('user', { id: 1, name: 'Alice' }); // type-safe
+store.set('theme', 'dark');                   // type-safe
+// store.set('theme', 'invalid');             // compile error
 
 const user = store.get('user'); // { id: number; name: string } | null
+
+// Key names are also type-checked
+store.remove('theme');    // OK
+// store.remove('unknown'); // compile error
 ```
 
-Example — Single-type mode (backward compatible):
+For dynamic keys, use an index signature:
 
 ```ts
-const store = new IsomorphicStore<string>('strings', StorageStrategy.MEMORY);
-store.set('k1', 'value');
-const v = store.get('k1'); // string | null
+type DynamicSchema = { [key: string]: unknown };
+const store = new IsomorphicStore<DynamicSchema>('dynamic', StorageStrategy.MEMORY);
 ```
-
-Migration notes:
-
-- If you currently use a single-type store and want to migrate to Schema mode, first define the Schema type and then gradually update `set`/`get` usages per key. Schema is compile-time only and has no runtime overhead.
-- For dynamic or unknown keys, keep using a single-type (e.g. `any` or `unknown`), or include a more general entry in your Schema (e.g. an index signature).
 
 ---
 
@@ -294,141 +253,103 @@ Migration notes:
 
 ### IsomorphicStore Class
 
+```ts
+class IsomorphicStore<T extends Record<string, any>>
+```
+
 #### Constructor
 
 ```ts
 constructor(
   namespace: string,
   strategy: StorageStrategy | string,
-  options?: IsomorphicStoreOptions<T>
+  options?: IsomorphicStoreOptions
 )
 ```
 
 - `namespace` (string): Namespace identifier. Stores with the same namespace share data.
 - `strategy` (StorageStrategy | string): Storage strategy or custom adapter name.
-- `options` (IsomorphicStoreOptions):
+- `options`:
   - `version` (number): Data version, defaults to 1.
   - `migrations` (MigrationRule[]): Version migration rules.
 
 #### Methods
 
-**set(key: string, value: T): void**
+**set\<K extends keyof T & string\>(key: K, value: T[K]): void**
 
-Sets or updates a data item.
+Sets or updates a data item. The key and value types are inferred from the schema.
 
-```ts
-store.set('key', 'value');
-```
-
-**get(key: string): T | null**
+**get\<K extends keyof T & string\>(key: K): T[K] | null**
 
 Retrieves a data item. Executes version migration if needed.
 
-```ts
-const value = store.get('key');
-```
-
-**remove(key: string): void**
+**remove\<K extends keyof T & string\>(key: K): void**
 
 Removes a specific data item.
-
-```ts
-store.remove('key');
-```
 
 **clear(): void**
 
 Clears all data within the namespace.
 
-```ts
-store.clear();
-```
-
-**hasKey(key: string): boolean**
+**hasKey\<K extends keyof T & string\>(key: K): boolean**
 
 Checks if a data item exists.
 
-```ts
-if (store.hasKey('key')) {
-  // ...
-}
-```
+**getOrDefault\<K extends keyof T & string\>(key: K, defaultValue: T[K]): T[K]**
 
-**subscribe(listener: EventListener<T>): Unsubscribe**
+Gets a data item, returns `defaultValue` if not found.
 
-Subscribes to data change events. Returns an unsubscribe function.
+**on(listener: EventListener): Unsubscribe**
 
-```ts
-const unsubscribe = store.subscribe(event => {
-  console.log(event);
-});
+Subscribes to all data change events.
 
-unsubscribe();
-```
+**off(listener: EventListener): void**
+
+Unsubscribes from all data change events.
+
+**onKey\<K extends keyof T & string\>(key: K, listener: EventListener\<T[K]\>): Unsubscribe**
+
+Subscribes to change events for a specific key.
+
+**offKey\<K extends keyof T & string\>(key: K, listener: EventListener\<T[K]\>): void**
+
+Unsubscribes from change events for a specific key.
+
+**once(listener: EventListener): Unsubscribe**
+
+Subscribes to the next data change event only.
+
+**onceKey\<K extends keyof T & string\>(key: K, listener: EventListener\<T[K]\>): Unsubscribe**
+
+Subscribes to the next change event for a specific key only.
 
 **destroy(): void**
 
 Destroys the store instance and unloads all listeners.
 
-```ts
-store.destroy();
-```
-
 ### Event Object
 
 ```ts
-interface IsomorphicStoreEvent<T> {
-  type: IsomorphicStoreEventType;        // 'set' | 'remove' | 'clear'
-  key?: string;                     // Key being operated on
-  oldValue?: T | null | undefined;  // Previous value
-  newValue?: T | null | undefined;  // New value
-  namespace: string;                // Namespace
-  timestamp: number;                // Event timestamp in milliseconds
-  source: IsomorphicStore<T>;            // Event source (IsomorphicStore instance)
+interface IsomorphicStoreEvent<V> {
+  type: IsomorphicStoreEventType; // 'set' | 'remove' | 'clear'
+  key?: string;
+  oldValue?: V | null | undefined;
+  newValue?: V | null | undefined;
+  namespace: string;
+  timestamp: number;
+  source: any;
 }
 ```
 
 ### Error Types
 
 ```ts
-// Base error class
 class IsomorphicStoreError extends Error { }
-
-// Namespace conflict error
 class NamespaceConflictError extends IsomorphicStoreError { }
-
-// Migration error
 class MigrationError extends IsomorphicStoreError { }
-
-// Adapter error
-class AdapterError extends IsomorphicStoreError { }
-
-// Not initialized error
-class NotInitializedError extends IsomorphicStoreError { }
-
-// Invalid argument error
-class InvalidArgumentError extends IsomorphicStoreError { }
-```
-
-Usage example:
-
-```ts
-import { MigrationError } from 'isomorphic-store';
-
-try {
-  const store = new IsomorphicStore('app', StorageStrategy.LOCAL, {
-    version: 3,
-    migrations: [
-      { from: 1, to: 2, migrate: d => d }
-      // Missing migration rule for 2->3
-    ]
-  });
-  store.get('data'); // Throws MigrationError
-} catch (err) {
-  if (err instanceof MigrationError) {
-    console.error('Migration failed:', err.message);
-  }
-}
+class SerializationError extends IsomorphicStoreError { }
+class StorageQuotaExceededError extends IsomorphicStoreError { }
+class UnsupportedStrategyError extends IsomorphicStoreError { }
 ```
 
 ### Exported Types
@@ -457,18 +378,6 @@ MIT License
 Copyright (c) 2025
 
 This project is licensed under the MIT License, allowing free use, modification, and distribution. See the [LICENSE](LICENSE) file for details.
-
----
-
-## Core Mechanisms Summary
-
-| Mechanism | Description | Use Case |
-|-----------|-------------|----------|
-| Storage Strategy | Five available built-in storage backends | Select persistent or temporary storage based on requirements |
-| Namespace | Data isolation and organization | Prevent data conflicts in multi-module applications |
-| Event System | Subscribe to data changes | Real-time UI updates or trigger business logic |
-| Migration Mechanism | Automatic data upgrade and transformation | Maintain data compatibility during application evolution |
-| Error Handling | Custom error classes | Precisely capture and locate issues |
 
 ---
 

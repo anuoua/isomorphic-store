@@ -12,44 +12,37 @@ import { globalNamespaceRegistry } from './registry';
 import { StorageAdapterFactory } from './factory';
 import { MigrationError } from './errors';
 
-/**
- * IsomorphicStore 主类
- * 提供类型安全的浏览器数据存储
- */
-export class IsomorphicStore<T = unknown> {
+type SchemaKey<T> = keyof T & string;
+type SchemaValue<T, K extends string> = T extends Record<K, infer V> ? V : never;
+
+export class IsomorphicStore<T extends Record<string, any> = Record<string, any>> {
   private namespace: string;
-  private strategy: StorageStrategy;
-  private adapter: IStorageAdapter<DataWithVersion<T>>;
+  private adapter: IStorageAdapter<DataWithVersion<T[keyof T]>>;
   private currentVersion: number;
-  private migrations: Map<string, (data: unknown) => T>;
-  private globalListeners = new Set<EventListener<T>>();
-  private keyListeners = new Map<string, Set<EventListener<T>>>();
-  private onceListeners = new Set<EventListener<T>>();
-  private onceKeyListeners = new Map<string, Set<EventListener<T>>>();
+  private migrations: Map<string, (data: unknown) => T[keyof T]>;
+  private globalListeners = new Set<EventListener<T[keyof T]>>();
+  private keyListeners = new Map<string, Set<EventListener<any>>>();
+  private onceListeners = new Set<EventListener<T[keyof T]>>();
+  private onceKeyListeners = new Map<string, Set<EventListener<any>>>();
 
   constructor(
     namespace: string,
     strategy: StorageStrategy,
-    options?: IsomorphicStoreOptions<T>
+    options?: IsomorphicStoreOptions<T[keyof T]>
   ) {
     this.namespace = namespace;
-    this.strategy = strategy;
     this.currentVersion = options?.version ?? 1;
 
-    // 注册命名空间
     globalNamespaceRegistry.register(namespace, strategy);
 
-    // 创建适配器
-    this.adapter = StorageAdapterFactory.create<DataWithVersion<T>>(strategy, namespace);
+    this.adapter = StorageAdapterFactory.create<DataWithVersion<T[keyof T]>>(strategy, namespace);
 
-    // 设置外部变化回调
     if (this.adapter.setExternalChangeCallback) {
-      this.adapter.setExternalChangeCallback((event: IsomorphicStoreEvent<DataWithVersion<T>>) => {
+      this.adapter.setExternalChangeCallback((event: IsomorphicStoreEvent<DataWithVersion<T[keyof T]>>) => {
         this.handleExternalChange(event);
       });
     }
 
-    // 构建迁移映射
     this.migrations = new Map();
     if (options?.migrations) {
       for (const rule of options.migrations) {
@@ -59,15 +52,11 @@ export class IsomorphicStore<T = unknown> {
     }
   }
 
-  /**
-   * 处理外部变化事件
-   */
-  private handleExternalChange(event: IsomorphicStoreEvent<DataWithVersion<T>>): void {
+  private handleExternalChange(event: IsomorphicStoreEvent<DataWithVersion<T[keyof T]>>): void {
     if (!event.key) {
       return;
     }
 
-    // 发出事件
     this.emitEvent({
       type: event.type as IsomorphicStoreEventType,
       key: event.key,
@@ -79,65 +68,44 @@ export class IsomorphicStore<T = unknown> {
     });
   }
 
-  /**
-   * 发出事件
-   */
-  private emitEvent(event: IsomorphicStoreEvent<T>): void {
-    // 发出全局事件
+  private emitEvent(event: IsomorphicStoreEvent<any>): void {
     for (const listener of this.globalListeners) {
       listener(event);
     }
 
-    // 发出 key 监听事件
     if (event.key && this.keyListeners.has(event.key)) {
       for (const listener of this.keyListeners.get(event.key)!) {
         listener(event);
       }
     }
 
-    // 发出一次性全局事件
-    const onceListenersToRemove = [];
+    const onceToRemove: EventListener<any>[] = [];
     for (const listener of this.onceListeners) {
       listener(event);
-      onceListenersToRemove.push(listener);
+      onceToRemove.push(listener);
     }
-    onceListenersToRemove.forEach((listener) => this.onceListeners.delete(listener));
+    for (const l of onceToRemove) this.onceListeners.delete(l);
 
-    // 发出一次性 key 事件
     if (event.key && this.onceKeyListeners.has(event.key)) {
-      const keyOnceListeners = this.onceKeyListeners.get(event.key)!;
-      const keyOnceListenersToRemove = [];
-      for (const listener of keyOnceListeners) {
+      const keyOnce = this.onceKeyListeners.get(event.key)!;
+      const keyOnceToRemove: EventListener<any>[] = [];
+      for (const listener of keyOnce) {
         listener(event);
-        keyOnceListenersToRemove.push(listener);
+        keyOnceToRemove.push(listener);
       }
-      keyOnceListenersToRemove.forEach((listener) => keyOnceListeners.delete(listener));
-
-      if (keyOnceListeners.size === 0) {
-        this.onceKeyListeners.delete(event.key);
-      }
+      for (const l of keyOnceToRemove) keyOnce.delete(l);
+      if (keyOnce.size === 0) this.onceKeyListeners.delete(event.key);
     }
   }
 
-  /**
-   * 获取存储的完整 key（包括命名空间前缀）
-   */
-  private getStorageKey(key: string): string {
-    return `${this.namespace}:${key}`;
-  }
-
-  /**
-   * 执行版本迁移
-   */
-  private migrateData(data: DataWithVersion<unknown>): T {
+  private migrateData(data: DataWithVersion<any>): T[keyof T] {
     if (data.version >= this.currentVersion) {
-      return data.data as T;
+      return data.data as T[keyof T];
     }
 
     let currentData: unknown = data.data;
     let currentVersion = data.version;
 
-    // 执行迁移链
     while (currentVersion < this.currentVersion) {
       const nextVersion = currentVersion + 1;
       const migrationKey = `${currentVersion}->${nextVersion}`;
@@ -146,34 +114,21 @@ export class IsomorphicStore<T = unknown> {
         throw new MigrationError('', currentVersion, nextVersion);
       }
 
-      const migrationFn = this.migrations.get(migrationKey)!;
-      currentData = migrationFn(currentData);
+      currentData = this.migrations.get(migrationKey)!(currentData);
       currentVersion = nextVersion;
     }
 
-    return currentData as T;
+    return currentData as T[keyof T];
   }
 
-  /**
-   * 设置数据
-   * 支持两种用法：
-   * 1. 单一类型：store.set(key, value)
-   * 2. Schema 类型：store.set<K>(key, value) 其中 T 是 Schema 对象
-   */
-  set<K extends string>(key: K, value: T extends Record<K, infer V> ? V : T): void;
-  set(key: string, value: T): void;
-  set(key: string, value: any): void {
-    const storageKey = this.getStorageKey(key);
-    const oldValue = this.get(key) as any;
+  set<K extends SchemaKey<T>>(key: K, value: SchemaValue<T, K>): void {
+    const oldValue = this.get(key);
 
-    const wrappedValue: DataWithVersion<any> = {
+    this.adapter.set(key, {
       version: this.currentVersion,
       data: value
-    };
+    } as DataWithVersion<T[keyof T]>);
 
-    this.adapter.set(storageKey, wrappedValue);
-
-    // 发出 SET 事件
     this.emitEvent({
       type: IsomorphicStoreEventType.SET,
       key,
@@ -185,47 +140,30 @@ export class IsomorphicStore<T = unknown> {
     });
   }
 
-  /**
-   * 获取数据
-   * 支持两种用法：
-   * 1. 单一类型：store.get(key) -> T | null
-   * 2. Schema 类型：store.get<K>(key) -> T[K] | null 其中 T 是 Schema 对象
-   */
-  get<K extends string>(key: K): T extends Record<K, infer V> ? V | null : T | null;
-  get(key: string): T | null;
-  get(key: string): any {
-    const storageKey = this.getStorageKey(key);
-    const wrappedValue = this.adapter.get(storageKey);
+  get<K extends SchemaKey<T>>(key: K): SchemaValue<T, K> | null {
+    const wrappedValue = this.adapter.get(key);
 
     if (wrappedValue === null) {
-      return null;
+      return null as any;
     }
 
-    // 检查并执行版本迁移
     if (wrappedValue.version < this.currentVersion) {
       const migratedValue = this.migrateData(wrappedValue);
-      // 直接写回到适配器，不通过 set() 方法以避免递归
-      const migratedWrapped: DataWithVersion<T> = {
+      this.adapter.set(key, {
         version: this.currentVersion,
         data: migratedValue
-      };
-      this.adapter.set(storageKey, migratedWrapped);
-      return migratedValue;
+      } as DataWithVersion<T[keyof T]>);
+      return migratedValue as any;
     }
 
-    return wrappedValue.data;
+    return wrappedValue.data as any;
   }
 
-  /**
-   * 删除数据
-   */
-  remove(key: string): void {
-    const storageKey = this.getStorageKey(key);
-    const oldValue = this.get(key) as any;
+  remove<K extends SchemaKey<T>>(key: K): void {
+    const oldValue = this.get(key);
 
-    this.adapter.remove(storageKey);
+    this.adapter.remove(key);
 
-    // 发出 REMOVE 事件
     this.emitEvent({
       type: IsomorphicStoreEventType.REMOVE,
       key,
@@ -236,56 +174,9 @@ export class IsomorphicStore<T = unknown> {
     });
   }
 
-  /**
-   * 清空所有数据
-   */
   clear(): void {
-    // 获取所有存储的 key 并删除
-    const namespace = this.namespace;
-    const keysToRemove = [];
+    this.adapter.clear();
 
-    // 需要遍历所有可能的 key，但我们没有直接的方式获取所有 key
-    // 这里我们只清空我们知道的 key
-    // 对于完整的清空，我们会直接清空 adapter（但这会影响其他数据）
-    // 解决方案：只清空这个命名空间的数据
-
-    // 对于内存适配器，我们可以直接清空
-    if (this.strategy === StorageStrategy.MEMORY) {
-      this.adapter.clear();
-    } else if (this.strategy === StorageStrategy.LOCAL) {
-      // 对于 localStorage，我们需要遍历所有 key
-      if (typeof window !== 'undefined' && window.localStorage) {
-        const keysToDelete = [];
-        for (let i = 0; i < window.localStorage.length; i++) {
-          const key = window.localStorage.key(i);
-          if (key && key.startsWith(`${namespace}:`)) {
-            keysToDelete.push(key);
-          }
-        }
-        for (const key of keysToDelete) {
-          window.localStorage.removeItem(key);
-        }
-      }
-    } else if (this.strategy === StorageStrategy.SESSION) {
-      // 对于 sessionStorage
-      if (typeof window !== 'undefined' && window.sessionStorage) {
-        const keysToDelete = [];
-        for (let i = 0; i < window.sessionStorage.length; i++) {
-          const key = window.sessionStorage.key(i);
-          if (key && key.startsWith(`${namespace}:`)) {
-            keysToDelete.push(key);
-          }
-        }
-        for (const key of keysToDelete) {
-          window.sessionStorage.removeItem(key);
-        }
-      }
-    } else {
-      // 对于 HISTORY 和 NAVIGATION，直接调用 adapter.clear()
-      this.adapter.clear();
-    }
-
-    // 发出 CLEAR 事件
     this.emitEvent({
       type: IsomorphicStoreEventType.CLEAR,
       namespace: this.namespace,
@@ -294,59 +185,33 @@ export class IsomorphicStore<T = unknown> {
     });
   }
 
-  /**
-   * 检查 key 是否存在
-   */
-  hasKey(key: string): boolean {
-    const storageKey = this.getStorageKey(key);
-    return this.adapter.hasKey(storageKey);
+  hasKey<K extends SchemaKey<T>>(key: K): boolean {
+    return this.adapter.hasKey(key);
   }
 
-  /**
-   * 获取数据或返回默认值
-   * 支持两种用法：
-   * 1. 单一类型：getOrDefault(key, defaultValue) -> T
-   * 2. Schema 类型：getOrDefault<K>(key, defaultValue) -> T[K] 其中 T 是 Schema
-   */
-  getOrDefault<K extends string>(
+  getOrDefault<K extends SchemaKey<T>>(
     key: K,
-    defaultValue: T extends Record<K, infer V> ? V : T
-  ): T extends Record<K, infer V> ? V : T;
-  getOrDefault(key: string, defaultValue: T): T;
-  getOrDefault(key: string, defaultValue: any): any {
+    defaultValue: SchemaValue<T, K>
+  ): SchemaValue<T, K> {
     const value = this.get(key);
-    return value !== null ? value : defaultValue;
+    return (value !== null ? value : defaultValue) as any;
   }
 
-  /**
-   * 监听所有数据变化
-   */
-  on(listener: EventListener<T>): Unsubscribe {
+  on(listener: EventListener<T[keyof T]>): Unsubscribe {
     this.globalListeners.add(listener);
     return () => {
       this.globalListeners.delete(listener);
     };
   }
 
-  /**
-   * 取消监听所有数据变化
-   */
-  off(listener: EventListener<T>): void {
+  off(listener: EventListener<T[keyof T]>): void {
     this.globalListeners.delete(listener);
   }
 
-  /**
-   * 监听特定 key 的变化
-   * 支持两种用法：
-   * 1. 单一类型：onKey(key, listener) 监听任意 key
-   * 2. Schema 类型：onKey<K>(key, listener) 其中 T 是 Schema，listener 接收 T[K] 类型的事件
-   */
-  onKey<K extends string>(
+  onKey<K extends SchemaKey<T>>(
     key: K,
-    listener: T extends Record<K, infer V> ? EventListener<V> : EventListener<T>
-  ): Unsubscribe;
-  onKey(key: string, listener: EventListener<T>): Unsubscribe;
-  onKey(key: string, listener: any): Unsubscribe {
+    listener: EventListener<SchemaValue<T, K>>
+  ): Unsubscribe {
     if (!this.keyListeners.has(key)) {
       this.keyListeners.set(key, new Set());
     }
@@ -363,15 +228,10 @@ export class IsomorphicStore<T = unknown> {
     };
   }
 
-  /**
-   * 取消监听特定 key 的变化
-   */
-  offKey<K extends string>(
+  offKey<K extends SchemaKey<T>>(
     key: K,
-    listener: T extends Record<K, infer V> ? EventListener<V> : EventListener<T>
-  ): void;
-  offKey(key: string, listener: EventListener<T>): void;
-  offKey(key: string, listener: any): void {
+    listener: EventListener<SchemaValue<T, K>>
+  ): void {
     const listeners = this.keyListeners.get(key);
     if (listeners) {
       listeners.delete(listener);
@@ -381,28 +241,17 @@ export class IsomorphicStore<T = unknown> {
     }
   }
 
-  /**
-   * 一次性监听所有数据变化
-   */
-  once(listener: EventListener<T>): Unsubscribe {
+  once(listener: EventListener<T[keyof T]>): Unsubscribe {
     this.onceListeners.add(listener);
     return () => {
       this.onceListeners.delete(listener);
     };
   }
 
-  /**
-   * 一次性监听特定 key 的变化
-   * 支持两种用法：
-   * 1. 单一类型：onceKey(key, listener) 监听任意 key
-   * 2. Schema 类型：onceKey<K>(key, listener) 其中 T 是 Schema，listener 接收 T[K] 类型的事件
-   */
-  onceKey<K extends string>(
+  onceKey<K extends SchemaKey<T>>(
     key: K,
-    listener: T extends Record<K, infer V> ? EventListener<V> : EventListener<T>
-  ): Unsubscribe;
-  onceKey(key: string, listener: EventListener<T>): Unsubscribe;
-  onceKey(key: string, listener: any): Unsubscribe {
+    listener: EventListener<SchemaValue<T, K>>
+  ): Unsubscribe {
     if (!this.onceKeyListeners.has(key)) {
       this.onceKeyListeners.set(key, new Set());
     }
@@ -419,17 +268,12 @@ export class IsomorphicStore<T = unknown> {
     };
   }
 
-  /**
-   * 销毁 IsomorphicStore 实例
-   */
   destroy(): void {
-    // 清空所有监听器
     this.globalListeners.clear();
     this.keyListeners.clear();
     this.onceListeners.clear();
     this.onceKeyListeners.clear();
 
-    // 注销命名空间
     globalNamespaceRegistry.unregister(this.namespace);
   }
 }

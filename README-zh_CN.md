@@ -60,28 +60,25 @@ yarn add isomorphic-store
 
 ### 4.1 基础示例
 
-创建一个简单的存储并执行 CRUD 操作：
+定义 Schema，创建存储，执行 CRUD 操作：
 
 ```ts
 import { IsomorphicStore, StorageStrategy } from 'isomorphic-store';
 
-// 创建内存存储
-const store = new IsomorphicStore('my-app:state', StorageStrategy.MEMORY);
+type AppSchema = {
+  username: string;
+  theme: 'light' | 'dark';
+};
 
-// 设置数据
+const store = new IsomorphicStore<AppSchema>('my-app:state', StorageStrategy.MEMORY);
+
 store.set('username', 'Alice');
 store.set('theme', 'dark');
 
-// 读取数据
 console.log(store.get('username')); // 'Alice'
 
-// 移除单个数据
 store.remove('theme');
-
-// 清空所有数据
 store.clear();
-
-// 销毁存储实例
 store.destroy();
 ```
 
@@ -94,9 +91,9 @@ IsomorphicStore 提供5种内置存储策略，可根据需求选择：
 数据持久化，关闭浏览器后仍保留。用于长期配置和用户偏好。
 
 ```ts
-const settings = new IsomorphicStore('settings', StorageStrategy.LOCAL);
+type SettingsSchema = { theme: string };
+const settings = new IsomorphicStore<SettingsSchema>('settings', StorageStrategy.LOCAL);
 settings.set('theme', 'dark');
-// 刷新页面后数据仍存在
 ```
 
 #### 4.2.2 SESSION (sessionStorage)
@@ -104,7 +101,8 @@ settings.set('theme', 'dark');
 会话级持久化，标签页关闭时清除。用于会话范围的临时数据。
 
 ```ts
-const session = new IsomorphicStore('session', StorageStrategy.SESSION);
+type SessionSchema = { authToken: string };
+const session = new IsomorphicStore<SessionSchema>('session', StorageStrategy.SESSION);
 session.set('authToken', 'abc123');
 ```
 
@@ -113,7 +111,8 @@ session.set('authToken', 'abc123');
 内存存储，进程结束后清除。用于仅需应用运行期间的临时状态。
 
 ```ts
-const cache = new IsomorphicStore('cache', StorageStrategy.MEMORY);
+type CacheSchema = { cachedList: number[] };
+const cache = new IsomorphicStore<CacheSchema>('cache', StorageStrategy.MEMORY);
 cache.set('cachedList', [1, 2, 3]);
 ```
 
@@ -122,7 +121,8 @@ cache.set('cachedList', [1, 2, 3]);
 使用浏览器历史 API，与路由集成。用于流程中间状态。
 
 ```ts
-const flow = new IsomorphicStore('flow', StorageStrategy.HISTORY);
+type FlowSchema = { currentStep: number };
+const flow = new IsomorphicStore<FlowSchema>('flow', StorageStrategy.HISTORY);
 flow.set('currentStep', 2);
 ```
 
@@ -131,7 +131,8 @@ flow.set('currentStep', 2);
 异步导航 API，用于跨标签页导航上下文。
 
 ```ts
-const nav = new IsomorphicStore('nav', StorageStrategy.NAVIGATION);
+type NavSchema = { destination: string };
+const nav = new IsomorphicStore<NavSchema>('nav', StorageStrategy.NAVIGATION);
 nav.set('destination', '/home');
 ```
 
@@ -140,36 +141,44 @@ nav.set('destination', '/home');
 监听数据变化，实现实时响应：
 
 ```ts
-const store = new IsomorphicStore('app', StorageStrategy.MEMORY);
+type AppSchema = { count: number };
+const store = new IsomorphicStore<AppSchema>('app', StorageStrategy.MEMORY);
 
 // 订阅所有变化
-const unsubscribe = store.subscribe(event => {
+const unsubscribe = store.on(event => {
   console.log(`事件: ${event.type}`);
   console.log(`键: ${event.key}`);
   console.log(`旧值: ${event.oldValue}`);
   console.log(`新值: ${event.newValue}`);
-  console.log(`时间戳: ${event.timestamp}`);
 });
 
 store.set('count', 1); // 触发订阅
-// 输出: 事件: set, 键: count, 新值: 1
 
-// 取消订阅
+// 监听特定 key
+const unsubKey = store.onKey('count', event => {
+  console.log(`count 变为 ${event.newValue}`);
+});
+
 unsubscribe();
+unsubKey();
 ```
 
 ### 4.4 版本与迁移
 
-数据结构升级时，自动迁移已有数据无需手动转换：
+数据结构升级时，自动迁移已有数据：
 
 ```ts
+type UserSchema = {
+  profile: { name: string; age: number; joinedAt?: number };
+};
+
 // 版本 1 的数据
-const storeV1 = new IsomorphicStore('user', StorageStrategy.LOCAL, { version: 1 });
+const storeV1 = new IsomorphicStore<UserSchema>('user', StorageStrategy.LOCAL, { version: 1 });
 storeV1.set('profile', { name: 'Alice', age: 25 });
 storeV1.destroy();
 
 // 升级到版本 2，定义迁移规则
-const storeV2 = new IsomorphicStore('user', StorageStrategy.LOCAL, {
+const storeV2 = new IsomorphicStore<UserSchema>('user', StorageStrategy.LOCAL, {
   version: 2,
   migrations: [
     {
@@ -178,35 +187,14 @@ const storeV2 = new IsomorphicStore('user', StorageStrategy.LOCAL, {
       migrate: (data) => ({
         name: data.name,
         age: data.age,
-        joinedAt: Date.now() // 新增字段
+        joinedAt: Date.now()
       })
     }
   ]
 });
 
-// 读取时自动执行迁移
 const profile = storeV2.get('profile');
 console.log(profile); // { name: 'Alice', age: 25, joinedAt: 1709... }
-```
-
-多级迁移：
-
-```ts
-const store = new IsomorphicStore('data', StorageStrategy.LOCAL, {
-  version: 3,
-  migrations: [
-    {
-      from: 1,
-      to: 2,
-      migrate: data => ({ ...data, v2: true })
-    },
-    {
-      from: 2,
-      to: 3,
-      migrate: data => ({ ...data, timestamp: Date.now() })
-    }
-  ]
-});
 ```
 
 ### 4.5 命名空间
@@ -214,50 +202,23 @@ const store = new IsomorphicStore('data', StorageStrategy.LOCAL, {
 每个 IsomorphicStore 实例通过命名空间隔离数据，防止冲突：
 
 ```ts
-// 用户模块
-const userStore = new IsomorphicStore('user:profile', StorageStrategy.LOCAL);
-userStore.set('name', 'Alice');
+type UserSchema = { name: string };
+type SettingsSchema = { theme: string };
 
-// 设置模块
-const settingsStore = new IsomorphicStore('app:settings', StorageStrategy.LOCAL);
+const userStore = new IsomorphicStore<UserSchema>('user:profile', StorageStrategy.LOCAL);
+const settingsStore = new IsomorphicStore<SettingsSchema>('app:settings', StorageStrategy.LOCAL);
+
+userStore.set('name', 'Alice');
 settingsStore.set('theme', 'dark');
 
-// 各自独立，不互相影响
-console.log(userStore.get('name')); // 'Alice'
+console.log(userStore.get('name'));   // 'Alice'
 console.log(settingsStore.get('theme')); // 'dark'
-console.log(userStore.get('theme')); // null
+console.log(userStore.get('theme'));  // null — 不同命名空间
 ```
 
-### 4.6 自定义适配器
+### 4.6 TypeScript 使用说明
 
-扩展存储能力，注册自定义适配器：
-
-```ts
-import { globalNamespaceRegistry } from 'isomorphic-store';
-
-class IndexedDBAdapter {
-  get(key) { /* 实现 */ }
-  set(key, value) { /* 实现 */ }
-  remove(key) { /* 实现 */ }
-  clear() { /* 实现 */ }
-  hasKey(key) { /* 实现 */ }
-}
-
-// 注册自定义适配器
-globalNamespaceRegistry.register('indexeddb', new IndexedDBAdapter());
-
-// 使用
-const db = new IsomorphicStore('myapp', 'indexeddb');
-```
-
-### 4.7 Typescript 使用说明
-
-IsomorphicStore 在类型层面支持两种使用方式：
-
-- Schema 模式（每个 key 指定独立类型，推荐）：在创建 `IsomorphicStore` 时传入一个映射 key -> 类型 的泛型对象，TypeScript 会为每个 key 推断精确的类型。
-- 单一类型模式（所有 key 共享同一类型，向后兼容）：继续传入单个类型 `T`，此时所有 key 的值都必须符合 `T`。
-
-示例 — Schema 模式：
+`IsomorphicStore<T>` 要求 `T` 是一个 Record 类型，将 key 映射到对应的值类型（即 Schema）。TypeScript 会为每个 key 推断精确类型：
 
 ```ts
 type AppSchema = {
@@ -268,25 +229,23 @@ type AppSchema = {
 
 const store = new IsomorphicStore<AppSchema>('app', StorageStrategy.LOCAL);
 
-store.set('user', { id: 1, name: 'Alice' }); // ✅ 类型安全
-store.set('theme', 'dark'); // ✅
-// store.set('theme', 'invalid'); // ❌ 编译错误
+store.set('user', { id: 1, name: 'Alice' }); // 类型安全
+store.set('theme', 'dark');                   // 类型安全
+// store.set('theme', 'invalid');             // 编译错误
 
 const user = store.get('user'); // { id: number; name: string } | null
+
+// key 名也会被类型检查
+store.remove('theme');    // OK
+// store.remove('unknown'); // 编译错误
 ```
 
-示例 — 单一类型模式（向后兼容）：
+动态 key 场景使用索引签名：
 
 ```ts
-const store = new IsomorphicStore<string>('strings', StorageStrategy.MEMORY);
-store.set('k1', 'value');
-const v = store.get('k1'); // string | null
+type DynamicSchema = { [key: string]: unknown };
+const store = new IsomorphicStore<DynamicSchema>('dynamic', StorageStrategy.MEMORY);
 ```
-
-迁移建议：
-
-- 如果当前代码使用单一类型但希望迁移到 Schema，请先在类型层面定义好 Schema，然后逐步将 `set`/`get` 调用替换为对应 key 的精确类型。Schema 仅影响编译期类型检查，不会在运行时产生开销。
-- 对于动态或未知 key，可保留单一类型（例如 `any` 或 `unknown`），或在 Schema 中使用更通用的条目（如索引签名）。
 
 ---
 
@@ -294,141 +253,103 @@ const v = store.get('k1'); // string | null
 
 ### IsomorphicStore 类
 
+```ts
+class IsomorphicStore<T extends Record<string, any>>
+```
+
 #### 构造函数
 
 ```ts
 constructor(
   namespace: string,
   strategy: StorageStrategy | string,
-  options?: IsomorphicStoreOptions<T>
+  options?: IsomorphicStoreOptions
 )
 ```
 
 - `namespace`（string）：命名空间标识，相同命名空间共享数据。
 - `strategy`（StorageStrategy | string）：存储策略或自定义适配器名称。
-- `options`（IsomorphicStoreOptions）：
+- `options`：
   - `version`（number）：数据版本，默认为 1。
   - `migrations`（MigrationRule[]）：版本迁移规则。
 
 #### 方法
 
-**set(key: string, value: T): void**
+**set\<K extends keyof T & string\>(key: K, value: T[K]): void**
 
-设置或更新数据项。
+设置或更新数据项。key 和 value 的类型从 Schema 自动推断。
 
-```ts
-store.set('key', 'value');
-```
-
-**get(key: string): T | null**
+**get\<K extends keyof T & string\>(key: K): T[K] | null**
 
 获取数据项，如需要则执行版本迁移。
 
-```ts
-const value = store.get('key');
-```
-
-**remove(key: string): void**
+**remove\<K extends keyof T & string\>(key: K): void**
 
 删除指定数据项。
-
-```ts
-store.remove('key');
-```
 
 **clear(): void**
 
 清除命名空间内所有数据。
 
-```ts
-store.clear();
-```
-
-**hasKey(key: string): boolean**
+**hasKey\<K extends keyof T & string\>(key: K): boolean**
 
 检查数据项是否存在。
 
-```ts
-if (store.hasKey('key')) {
-  // ...
-}
-```
+**getOrDefault\<K extends keyof T & string\>(key: K, defaultValue: T[K]): T[K]**
 
-**subscribe(listener: EventListener<T>): Unsubscribe**
+获取数据项，不存在时返回 `defaultValue`。
 
-订阅数据变化事件，返回取消订阅函数。
+**on(listener: EventListener): Unsubscribe**
 
-```ts
-const unsubscribe = store.subscribe(event => {
-  console.log(event);
-});
+订阅所有数据变化事件。
 
-unsubscribe();
-```
+**off(listener: EventListener): void**
+
+取消订阅所有数据变化事件。
+
+**onKey\<K extends keyof T & string\>(key: K, listener: EventListener\<T[K]\>): Unsubscribe**
+
+订阅特定 key 的变化事件。
+
+**offKey\<K extends keyof T & string\>(key: K, listener: EventListener\<T[K]\>): void**
+
+取消订阅特定 key 的变化事件。
+
+**once(listener: EventListener): Unsubscribe**
+
+订阅下一次数据变化事件（触发后自动取消）。
+
+**onceKey\<K extends keyof T & string\>(key: K, listener: EventListener\<T[K]\>): Unsubscribe**
+
+订阅特定 key 的下一次变化事件。
 
 **destroy(): void**
 
 销毁存储实例，卸载所有监听器。
 
-```ts
-store.destroy();
-```
-
 ### 事件对象
 
 ```ts
-interface IsomorphicStoreEvent<T> {
-  type: IsomorphicStoreEventType;      // 'set' | 'remove' | 'clear'
-  key?: string;                   // 操作的键名
-  oldValue?: T | null | undefined; // 旧值
-  newValue?: T | null | undefined; // 新值
-  namespace: string;              // 命名空间
-  timestamp: number;              // 事件发生时间戳（毫秒）
-  source: IsomorphicStore<T>;          // 事件来源（IsomorphicStore 实例）
+interface IsomorphicStoreEvent<V> {
+  type: IsomorphicStoreEventType; // 'set' | 'remove' | 'clear'
+  key?: string;
+  oldValue?: V | null | undefined;
+  newValue?: V | null | undefined;
+  namespace: string;
+  timestamp: number;
+  source: any;
 }
 ```
 
 ### 错误类型
 
 ```ts
-// 基础错误类
 class IsomorphicStoreError extends Error { }
-
-// 命名空间冲突错误
 class NamespaceConflictError extends IsomorphicStoreError { }
-
-// 迁移错误
 class MigrationError extends IsomorphicStoreError { }
-
-// 适配器错误
-class AdapterError extends IsomorphicStoreError { }
-
-// 未初始化错误
-class NotInitializedError extends IsomorphicStoreError { }
-
-// 无效参数错误
-class InvalidArgumentError extends IsomorphicStoreError { }
-```
-
-使用示例：
-
-```ts
-import { MigrationError } from 'isomorphic-store';
-
-try {
-  const store = new IsomorphicStore('app', StorageStrategy.LOCAL, {
-    version: 3,
-    migrations: [
-      { from: 1, to: 2, migrate: d => d }
-      // 缺少 2->3 的迁移规则
-    ]
-  });
-  store.get('data'); // 抛出 MigrationError
-} catch (err) {
-  if (err instanceof MigrationError) {
-    console.error('迁移失败:', err.message);
-  }
-}
+class SerializationError extends IsomorphicStoreError { }
+class StorageQuotaExceededError extends IsomorphicStoreError { }
+class UnsupportedStrategyError extends IsomorphicStoreError { }
 ```
 
 ### 导出的类型
@@ -450,25 +371,13 @@ import {
 
 ---
 
-## 6. 证书
+## 6. 许可证
 
 MIT License
 
 Copyright (c) 2025
 
-本项目采用 MIT 证书，允许自由使用、修改和分发。详见 [LICENSE](LICENSE) 文件。
-
----
-
-## 核心机制总结
-
-| 机制 | 说明 | 使用场景 |
-|------|------|---------|
-| 存储策略 | 开箱即用的5种存储后端 | 根据需求选择持久化或临时存储 |
-| 命名空间 | 数据隔离与组织 | 多模块应用中防止数据冲突 |
-| 事件系统 | 订阅数据变化 | 实时更新 UI 或触发业务逻辑 |
-| 迁移机制 | 自动数据升级转换 | 应用演进过程中维持数据兼容性 |
-| 错误处理 | 自定义错误类 | 精准捕获和定位问题 |
+本项目采用 MIT 许可证，允许自由使用、修改和分发。详见 [LICENSE](LICENSE) 文件。
 
 ---
 

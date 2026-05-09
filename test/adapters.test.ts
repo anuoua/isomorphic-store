@@ -85,21 +85,21 @@ describe('Storage Adapters', () => {
 
   describe('LocalStorageAdapter', () => {
     it('should store data in localStorage', () => {
-      const adapter = new LocalStorageAdapter<string>();
+      const adapter = new LocalStorageAdapter<string>('testns');
 
       adapter.set('key1', 'value1');
-      expect(window.localStorage.getItem('key1')).toBeTruthy();
+      expect(window.localStorage.getItem('testns:key1')).toBeTruthy();
     });
 
     it('should retrieve data from localStorage', () => {
-      const adapter = new LocalStorageAdapter<string>();
+      const adapter = new LocalStorageAdapter<string>('testns');
 
       adapter.set('key1', 'value1');
       expect(adapter.get('key1')).toBe('value1');
     });
 
     it('should handle structured data', () => {
-      const adapter = new LocalStorageAdapter<{ a: number; b: string }>();
+      const adapter = new LocalStorageAdapter<{ a: number; b: string }>('testns');
       const data = { a: 1, b: 'test' };
 
       adapter.set('key1', data);
@@ -108,39 +108,39 @@ describe('Storage Adapters', () => {
     });
 
     it('should remove data from localStorage', () => {
-      const adapter = new LocalStorageAdapter<string>();
+      const adapter = new LocalStorageAdapter<string>('testns');
 
       adapter.set('key1', 'value1');
       adapter.remove('key1');
-      expect(window.localStorage.getItem('key1')).toBeNull();
+      expect(window.localStorage.getItem('testns:key1')).toBeNull();
     });
 
     it('should persist across adapter instances', () => {
-      const adapter1 = new LocalStorageAdapter<string>();
+      const adapter1 = new LocalStorageAdapter<string>('testns');
       adapter1.set('key1', 'value1');
 
-      const adapter2 = new LocalStorageAdapter<string>();
+      const adapter2 = new LocalStorageAdapter<string>('testns');
       expect(adapter2.get('key1')).toBe('value1');
     });
   });
 
   describe('SessionStorageAdapter', () => {
     it('should store data in sessionStorage', () => {
-      const adapter = new SessionStorageAdapter<string>();
+      const adapter = new SessionStorageAdapter<string>('testns');
 
       adapter.set('key1', 'value1');
-      expect(window.sessionStorage.getItem('key1')).toBeTruthy();
+      expect(window.sessionStorage.getItem('testns:key1')).toBeTruthy();
     });
 
     it('should retrieve data from sessionStorage', () => {
-      const adapter = new SessionStorageAdapter<string>();
+      const adapter = new SessionStorageAdapter<string>('testns');
 
       adapter.set('key1', 'value1');
       expect(adapter.get('key1')).toBe('value1');
     });
 
     it('should handle structured data', () => {
-      const adapter = new SessionStorageAdapter<{ a: number; b: string }>();
+      const adapter = new SessionStorageAdapter<{ a: number; b: string }>('testns');
       const data = { a: 1, b: 'test' };
 
       adapter.set('key1', data);
@@ -149,11 +149,11 @@ describe('Storage Adapters', () => {
     });
 
     it('should remove data from sessionStorage', () => {
-      const adapter = new SessionStorageAdapter<string>();
+      const adapter = new SessionStorageAdapter<string>('testns');
 
       adapter.set('key1', 'value1');
       adapter.remove('key1');
-      expect(window.sessionStorage.getItem('key1')).toBeNull();
+      expect(window.sessionStorage.getItem('testns:key1')).toBeNull();
     });
   });
 
@@ -258,7 +258,7 @@ describe('Storage Adapters', () => {
       const store = new IsomorphicStore('test:history', StorageStrategy.HISTORY);
 
       store.set('key1', 'value1');
-      expect(window.history.state['test:history']['test:history:key1']).toBeTruthy();
+      expect(window.history.state['test:history']['key1']).toBeTruthy();
       expect(store.get('key1')).toBe('value1');
 
       store.destroy();
@@ -297,7 +297,7 @@ describe('Storage Adapters', () => {
 
   describe('Adapter null handling', () => {
     it('LocalStorageAdapter should handle null values', () => {
-      const adapter = new LocalStorageAdapter<string | null>();
+      const adapter = new LocalStorageAdapter<string | null>('testns');
 
       adapter.set('key1', null as any);
       const result = adapter.get('key1');

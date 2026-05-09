@@ -213,15 +213,24 @@ describe('IsomorphicStore - Basic Operations', () => {
   });
 
   describe('Type safety', () => {
+    type TypedSchema = {
+      user: { name: string; age: number };
+    };
+    let typedStore: IsomorphicStore<TypedSchema>;
+
     beforeEach(() => {
-      store = new IsomorphicStore<{ name: string; age: number }>('test:typed', StorageStrategy.MEMORY);
+      typedStore = new IsomorphicStore<TypedSchema>('test:typed', StorageStrategy.MEMORY);
+    });
+
+    afterEach(() => {
+      typedStore.destroy();
     });
 
     it('should support typed data', () => {
       const data = { name: 'Alice', age: 30 };
-      store.set('user', data);
+      typedStore.set('user', data);
 
-      const retrieved = store.get('user');
+      const retrieved = typedStore.get('user');
       expect(retrieved?.name).toBe('Alice');
       expect(retrieved?.age).toBe(30);
     });
@@ -262,7 +271,7 @@ describe('IsomorphicStore - Basic Operations', () => {
         items: Array(1000).fill(0).map((_, i) => ({ id: i, value: `item-${i}` }))
       };
       store.set('large', largeData);
-      const retrieved = store.get('large');
+      const retrieved = store.get('large') as any;
       expect(retrieved?.items.length).toBe(1000);
     });
   });
