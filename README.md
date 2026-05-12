@@ -165,37 +165,70 @@ unsubKey();
 
 ### 4.4 Versioning and Migration
 
-Automatically migrate existing data when the data structure is upgraded:
+When the data schema undergoes breaking changes, IsomorphicStore can automatically migrate data at construction time. The version number defaults to `0`, representing an initial state without versioning.
+
+#### Basic Usage
 
 ```ts
-type UserSchema = {
-  profile: { name: string; age: number; joinedAt?: number };
-};
+// Assume existing version 0 data (no version specified means default 0)
+const store = new IsomorphicStore('user', StorageStrategy.LOCAL);
+store.set('profile', { name: 'Alice', age: 25 });
+store.destroy();
 
-// Version 1 data
-const storeV1 = new IsomorphicStore<UserSchema>('user', StorageStrategy.LOCAL, { version: 1 });
-storeV1.set('profile', { name: 'Alice', age: 25 });
-storeV1.destroy();
-
-// Upgrade to version 2 with migration rules
-const storeV2 = new IsomorphicStore<UserSchema>('user', StorageStrategy.LOCAL, {
-  version: 2,
+// Upgrade to version 1 with a 0→1 migration rule
+const storeV1 = new IsomorphicStore('user', StorageStrategy.LOCAL, {
+  version: 1,
   migrations: [
     {
-      from: 1,
-      to: 2,
+      from: 0,
+      to: 1,
       migrate: (data) => ({
-        name: data.name,
-        age: data.age,
-        joinedAt: Date.now()
+        profile: {
+          ...data.profile,
+          joinedAt: Date.now()
+        }
       })
     }
   ]
 });
 
-const profile = storeV2.get('profile');
-console.log(profile); // { name: 'Alice', age: 25, joinedAt: 1709... }
+storeV1.get('profile'); // { name: 'Alice', age: 25, joinedAt: 1709... }
 ```
+
+#### Chained Migrations
+
+Migration chains must be contiguous — a migration rule is required for each step from one version to the next:
+
+```ts
+const storeV3 = new IsomorphicStore('app', StorageStrategy.LOCAL, {
+  version: 3,
+  migrations: [
+    {
+      from: 0,
+      to: 1,
+      migrate: (data) => ({ ...data, v1: true })
+    },
+    {
+      from: 1,
+      to: 2,
+      migrate: (data) => ({ ...data, v2: true })
+    },
+    {
+      from: 2,
+      to: 3,
+      migrate: (data) => ({ ...data, v3: true })
+    }
+  ]
+});
+```
+
+#### Migration Rules
+
+- The migration function receives **all data in the namespace** (`Record<string, any>`) and must return the complete migrated data.
+- The `migrate` function replaces all keys in the namespace; any unreturned keys will be removed.
+- If the stored version is >= the current version, no migration is executed.
+- If there is no stored version and no data, only the current version number is written.
+- Missing intermediate migration rules will throw a `MigrationError`.
 
 ### 4.5 Namespacing
 
@@ -270,7 +303,7 @@ constructor(
 - `namespace` (string): Namespace identifier. Stores with the same namespace share data.
 - `strategy` (StorageStrategy | string): Storage strategy or custom adapter name.
 - `options`:
-  - `version` (number): Data version, defaults to 1.
+  - `version` (number): Data version, defaults to 0.
   - `migrations` (MigrationRule[]): Version migration rules.
 
 #### Methods

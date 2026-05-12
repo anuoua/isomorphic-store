@@ -165,37 +165,70 @@ unsubKey();
 
 ### 4.4 版本与迁移
 
-数据结构升级时，自动迁移已有数据：
+当数据结构发生破坏性变更时，IsomorphicStore 可在构造时自动执行迁移。版本号默认为 `0`，表示尚未进行过版本管理的初始状态。
+
+#### 基本用法
 
 ```ts
-type UserSchema = {
-  profile: { name: string; age: number; joinedAt?: number };
-};
+// 假设已有版本 0 的数据（不指定 version 即为默认值 0）
+const store = new IsomorphicStore('user', StorageStrategy.LOCAL);
+store.set('profile', { name: 'Alice', age: 25 });
+store.destroy();
 
-// 版本 1 的数据
-const storeV1 = new IsomorphicStore<UserSchema>('user', StorageStrategy.LOCAL, { version: 1 });
-storeV1.set('profile', { name: 'Alice', age: 25 });
-storeV1.destroy();
-
-// 升级到版本 2，定义迁移规则
-const storeV2 = new IsomorphicStore<UserSchema>('user', StorageStrategy.LOCAL, {
-  version: 2,
+// 升级到版本 1，定义 0→1 的迁移规则
+const storeV1 = new IsomorphicStore('user', StorageStrategy.LOCAL, {
+  version: 1,
   migrations: [
     {
-      from: 1,
-      to: 2,
+      from: 0,
+      to: 1,
       migrate: (data) => ({
-        name: data.name,
-        age: data.age,
-        joinedAt: Date.now()
+        profile: {
+          ...data.profile,
+          joinedAt: Date.now()
+        }
       })
     }
   ]
 });
 
-const profile = storeV2.get('profile');
-console.log(profile); // { name: 'Alice', age: 25, joinedAt: 1709... }
+storeV1.get('profile'); // { name: 'Alice', age: 25, joinedAt: 1709... }
 ```
+
+#### 链式迁移
+
+迁移链必须连续，每个版本到下一个版本都需要提供对应的迁移规则：
+
+```ts
+const storeV3 = new IsomorphicStore('app', StorageStrategy.LOCAL, {
+  version: 3,
+  migrations: [
+    {
+      from: 0,
+      to: 1,
+      migrate: (data) => ({ ...data, v1: true })
+    },
+    {
+      from: 1,
+      to: 2,
+      migrate: (data) => ({ ...data, v2: true })
+    },
+    {
+      from: 2,
+      to: 3,
+      migrate: (data) => ({ ...data, v3: true })
+    }
+  ]
+});
+```
+
+#### 迁移规则
+
+- 迁移函数接收**整个命名空间的数据**（`Record<string, any>`），返回迁移后的完整数据。
+- `migrate` 函数会替换命名空间中的所有 key，未返回的 key 将被删除。
+- 如果存储版本 >= 当前版本，不会执行迁移。
+- 如果存储中无版本记录且无数据，仅写入当前版本号。
+- 缺少中间版本的迁移规则会抛出 `MigrationError`。
 
 ### 4.5 命名空间
 
@@ -270,7 +303,7 @@ constructor(
 - `namespace`（string）：命名空间标识，相同命名空间共享数据。
 - `strategy`（StorageStrategy | string）：存储策略或自定义适配器名称。
 - `options`：
-  - `version`（number）：数据版本，默认为 1。
+  - `version`（number）：数据版本，默认为 0。
   - `migrations`（MigrationRule[]）：版本迁移规则。
 
 #### 方法

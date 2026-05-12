@@ -39,7 +39,7 @@ export interface MigrationRule<T = unknown> {
  * IsomorphicStore 配置选项
  */
 export interface IsomorphicStoreOptions<T = unknown> {
-  version?: number;                      // 当前版本（默认为 1）
+  version?: number;                      // 当前版本（默认为 0）
   migrations?: MigrationRule<T>[];       // 迁移规则
 }
 

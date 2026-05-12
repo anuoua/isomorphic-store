@@ -32,7 +32,7 @@ export class IsomorphicStore<T extends Record<string, any> = Record<string, any>
     options?: IsomorphicStoreOptions<T[keyof T]>
   ) {
     this.namespace = namespace;
-    this.currentVersion = options?.version ?? 1;
+    this.currentVersion = options?.version ?? 0;
 
     globalNamespaceRegistry.register(namespace, strategy);
 
@@ -97,7 +97,7 @@ export class IsomorphicStore<T extends Record<string, any> = Record<string, any>
   private getStoredVersion(): number {
     const version = this.adapter.get(VERSION_KEY);
     if (version === null) {
-      return 1;
+      return 0;
     }
     return version as unknown as number;
   }
