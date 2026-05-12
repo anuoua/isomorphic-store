@@ -30,9 +30,9 @@ export interface DataWithVersion<T = unknown> {
  * 版本迁移规则
  */
 export interface MigrationRule<T = unknown> {
-  from: number;                          // 源版本
-  to: number;                            // 目标版本
-  migrate: (data: unknown) => T;         // 迁移函数
+  from: number;                                          // 源版本
+  to: number;                                            // 目标版本
+  migrate: (data: Record<string, any>) => Record<string, T>;  // 整体迁移函数
 }
 
 /**
@@ -75,6 +75,7 @@ export interface IStorageAdapter<T = unknown> {
   remove(key: string): void;
   clear(): void;
   hasKey(key: string): boolean;
+  getAllKeys(): string[];
   // 可选：Adapter 可注册外部变化回调
   setExternalChangeCallback?(callback: (event: IsomorphicStoreEvent<T>) => void): void;
 }

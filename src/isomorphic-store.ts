@@ -5,21 +5,22 @@ import {
   type EventListener,
   type Unsubscribe,
   type IsomorphicStoreOptions,
-  type DataWithVersion,
   type IStorageAdapter
 } from './types';
 import { globalNamespaceRegistry } from './registry';
 import { StorageAdapterFactory } from './factory';
 import { MigrationError } from './errors';
 
+const VERSION_KEY = '__version__';
+
 type SchemaKey<T> = keyof T & string;
 type SchemaValue<T, K extends string> = T extends Record<K, infer V> ? V : never;
 
 export class IsomorphicStore<T extends Record<string, any> = Record<string, any>> {
   private namespace: string;
-  private adapter: IStorageAdapter<DataWithVersion<T[keyof T]>>;
+  private adapter: IStorageAdapter<T[keyof T]>;
   private currentVersion: number;
-  private migrations: Map<string, (data: unknown) => T[keyof T]>;
+  private migrations: Map<string, (data: Record<string, any>) => Record<string, any>>;
   private globalListeners = new Set<EventListener<T[keyof T]>>();
   private keyListeners = new Map<string, Set<EventListener<any>>>();
   private onceListeners = new Set<EventListener<T[keyof T]>>();
@@ -35,10 +36,10 @@ export class IsomorphicStore<T extends Record<string, any> = Record<string, any>
 
     globalNamespaceRegistry.register(namespace, strategy);
 
-    this.adapter = StorageAdapterFactory.create<DataWithVersion<T[keyof T]>>(strategy, namespace);
+    this.adapter = StorageAdapterFactory.create<T[keyof T]>(strategy, namespace);
 
     if (this.adapter.setExternalChangeCallback) {
-      this.adapter.setExternalChangeCallback((event: IsomorphicStoreEvent<DataWithVersion<T[keyof T]>>) => {
+      this.adapter.setExternalChangeCallback((event: IsomorphicStoreEvent<T[keyof T]>) => {
         this.handleExternalChange(event);
       });
     }
@@ -50,9 +51,62 @@ export class IsomorphicStore<T extends Record<string, any> = Record<string, any>
         this.migrations.set(key, rule.migrate);
       }
     }
+
+    this.migrateIfNeeded();
   }
 
-  private handleExternalChange(event: IsomorphicStoreEvent<DataWithVersion<T[keyof T]>>): void {
+  private migrateIfNeeded(): void {
+    const hasStoredVersion = this.adapter.hasKey(VERSION_KEY);
+    const storedVersion = this.getStoredVersion();
+
+    if (storedVersion >= this.currentVersion) {
+      return;
+    }
+
+    const allKeys = this.adapter.getAllKeys().filter(k => k !== VERSION_KEY);
+
+    if (!hasStoredVersion && allKeys.length === 0) {
+      this.setStoredVersion(this.currentVersion);
+      return;
+    }
+
+    const allData: Record<string, any> = {};
+
+    for (const key of allKeys) {
+      const value = this.adapter.get(key);
+      if (value !== null) {
+        allData[key] = value;
+      }
+    }
+
+    const migratedData = this.migrateData(allData, storedVersion);
+
+    for (const [key, value] of Object.entries(migratedData)) {
+      this.adapter.set(key, value as T[keyof T]);
+    }
+
+    for (const key of allKeys) {
+      if (!(key in migratedData)) {
+        this.adapter.remove(key);
+      }
+    }
+
+    this.setStoredVersion(this.currentVersion);
+  }
+
+  private getStoredVersion(): number {
+    const version = this.adapter.get(VERSION_KEY);
+    if (version === null) {
+      return 1;
+    }
+    return version as unknown as number;
+  }
+
+  private setStoredVersion(version: number): void {
+    this.adapter.set(VERSION_KEY, version as unknown as T[keyof T]);
+  }
+
+  private handleExternalChange(event: IsomorphicStoreEvent<T[keyof T]>): void {
     if (!event.key) {
       return;
     }
@@ -60,8 +114,8 @@ export class IsomorphicStore<T extends Record<string, any> = Record<string, any>
     this.emitEvent({
       type: event.type as IsomorphicStoreEventType,
       key: event.key,
-      oldValue: event.oldValue?.data,
-      newValue: event.newValue?.data,
+      oldValue: event.oldValue,
+      newValue: event.newValue,
       namespace: this.namespace,
       timestamp: Date.now(),
       source: this
@@ -98,36 +152,33 @@ export class IsomorphicStore<T extends Record<string, any> = Record<string, any>
     }
   }
 
-  private migrateData(data: DataWithVersion<any>): T[keyof T] {
-    if (data.version >= this.currentVersion) {
-      return data.data as T[keyof T];
+  private migrateData(data: Record<string, any>, fromVersion: number): Record<string, any> {
+    if (fromVersion >= this.currentVersion) {
+      return data;
     }
 
-    let currentData: unknown = data.data;
-    let currentVersion = data.version;
+    let currentData = data;
+    let currentVersion = fromVersion;
 
     while (currentVersion < this.currentVersion) {
       const nextVersion = currentVersion + 1;
       const migrationKey = `${currentVersion}->${nextVersion}`;
 
       if (!this.migrations.has(migrationKey)) {
-        throw new MigrationError('', currentVersion, nextVersion);
+        throw new MigrationError(currentVersion, nextVersion);
       }
 
       currentData = this.migrations.get(migrationKey)!(currentData);
       currentVersion = nextVersion;
     }
 
-    return currentData as T[keyof T];
+    return currentData;
   }
 
   set<K extends SchemaKey<T>>(key: K, value: SchemaValue<T, K>): void {
     const oldValue = this.get(key);
 
-    this.adapter.set(key, {
-      version: this.currentVersion,
-      data: value
-    } as DataWithVersion<T[keyof T]>);
+    this.adapter.set(key, value as T[keyof T]);
 
     this.emitEvent({
       type: IsomorphicStoreEventType.SET,
@@ -141,22 +192,7 @@ export class IsomorphicStore<T extends Record<string, any> = Record<string, any>
   }
 
   get<K extends SchemaKey<T>>(key: K): SchemaValue<T, K> | null {
-    const wrappedValue = this.adapter.get(key);
-
-    if (wrappedValue === null) {
-      return null as any;
-    }
-
-    if (wrappedValue.version < this.currentVersion) {
-      const migratedValue = this.migrateData(wrappedValue);
-      this.adapter.set(key, {
-        version: this.currentVersion,
-        data: migratedValue
-      } as DataWithVersion<T[keyof T]>);
-      return migratedValue as any;
-    }
-
-    return wrappedValue.data as any;
+    return this.adapter.get(key) as SchemaValue<T, K> | null;
   }
 
   remove<K extends SchemaKey<T>>(key: K): void {

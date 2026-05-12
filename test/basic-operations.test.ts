@@ -92,8 +92,7 @@ describe('IsomorphicStore - Basic Operations', () => {
       store.set('undefinedValue', undefined);
 
       expect(store.get('nullValue')).toBeNull();
-      // undefined 会被 JSON 序列化为 undefined
-      expect(store.get('undefinedValue')).toBeUndefined();
+      expect(store.get('undefinedValue')).toBeNull();
     });
 
     it('should overwrite existing values', () => {

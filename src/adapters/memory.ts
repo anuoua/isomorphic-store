@@ -26,4 +26,8 @@ export class MemoryStorageAdapter<T = unknown> implements IStorageAdapter<T> {
   hasKey(key: string): boolean {
     return this.storage.has(key);
   }
+
+  getAllKeys(): string[] {
+    return Array.from(this.storage.keys());
+  }
 }

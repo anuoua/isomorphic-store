@@ -48,7 +48,7 @@ export class UnsupportedStrategyError extends IsomorphicStoreError {
  * 版本迁移错误
  */
 export class MigrationError extends IsomorphicStoreError {
-  constructor(key: string, fromVersion: number, toVersion: number) {
-    super(`Missing migration rule from version ${fromVersion} to ${toVersion} for key "${key}"`);
+  constructor(fromVersion: number, toVersion: number) {
+    super(`Missing migration rule from version ${fromVersion} to ${toVersion}`);
   }
 }

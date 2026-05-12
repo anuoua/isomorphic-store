@@ -172,6 +172,19 @@ export class HistoryStateAdapter<T = unknown> implements IStorageAdapter<T> {
     return !!(state[this.namespace] && key in state[this.namespace]);
   }
 
+  getAllKeys(): string[] {
+    if (typeof window === 'undefined' || !window.history || !window.history.state) {
+      return [];
+    }
+
+    const state = window.history.state;
+    if (!state[this.namespace]) {
+      return [];
+    }
+
+    return Object.keys(state[this.namespace]);
+  }
+
   setExternalChangeCallback(callback: (event: IsomorphicStoreEvent<T>) => void): void {
     this.externalChangeCallback = callback;
   }

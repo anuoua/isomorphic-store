@@ -111,11 +111,13 @@ describe('IsomorphicStore - Integration Tests', () => {
           {
             from: 1,
             to: 2,
-            migrate: (data: any) => ({
-              profile: {
-                displayName: data.name,
-                email: data.email,
-                createdAt: Date.now()
+            migrate: (data: Record<string, any>) => ({
+              user: {
+                profile: {
+                  displayName: data.user?.name,
+                  email: data.user?.email,
+                  createdAt: Date.now()
+                }
               }
             })
           }

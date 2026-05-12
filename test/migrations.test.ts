@@ -20,8 +20,7 @@ describe('IsomorphicStore - Version Migrations', () => {
   });
 
   describe('Single migration', () => {
-    it('should migrate data from v1 to v2', () => {
-      // 创建 v1 store 并设置数据（使用 LOCAL 以持久化数据）
+    it('should migrate data from v1 to v2 at construction time', () => {
       const storeV1 = new IsomorphicStore('test:migration', StorageStrategy.LOCAL, {
         version: 1
       });
@@ -29,7 +28,6 @@ describe('IsomorphicStore - Version Migrations', () => {
       storeV1.set('user', { name: 'Alice' });
       storeV1.destroy();
 
-      // 创建 v2 store，带有迁移规则
       const storeV2 = new IsomorphicStore(
         'test:migration',
         StorageStrategy.LOCAL,
@@ -39,10 +37,15 @@ describe('IsomorphicStore - Version Migrations', () => {
             {
               from: 1,
               to: 2,
-              migrate: (data: any) => ({
-                displayName: data.name || 'Unknown',
-                email: ''
-              })
+              migrate: (data: Record<string, any>) => {
+                const user = data.user;
+                return {
+                  user: {
+                    displayName: user?.name || 'Unknown',
+                    email: ''
+                  }
+                };
+              }
             }
           ]
         }
@@ -57,16 +60,47 @@ describe('IsomorphicStore - Version Migrations', () => {
       storeV2.destroy();
     });
 
-    it('should automatically write back migrated data with new version', () => {
-      // 使用 localStorage 确保数据持久化
-      const storeV1 = new IsomorphicStore('test:migration-persist', StorageStrategy.LOCAL, {
+    it('should migrate all keys at construction time', () => {
+      const storeV1 = new IsomorphicStore('test:migration-all', StorageStrategy.LOCAL, {
         version: 1
       });
 
       storeV1.set('user', { name: 'Bob' });
+      storeV1.set('settings', { theme: 'dark' });
       storeV1.destroy();
 
-      // 创建 v2 store
+      const storeV2 = new IsomorphicStore(
+        'test:migration-all',
+        StorageStrategy.LOCAL,
+        {
+          version: 2,
+          migrations: [
+            {
+              from: 1,
+              to: 2,
+              migrate: (data: Record<string, any>) => ({
+                user: { displayName: data.user?.name || 'Unknown' },
+                settings: { ...data.settings, migrated: true }
+              })
+            }
+          ]
+        }
+      );
+
+      expect(storeV2.get('user')).toEqual({ displayName: 'Bob' });
+      expect(storeV2.get('settings')).toEqual({ theme: 'dark', migrated: true });
+
+      storeV2.destroy();
+    });
+
+    it('should persist migrated data with new version', () => {
+      const storeV1 = new IsomorphicStore('test:migration-persist', StorageStrategy.LOCAL, {
+        version: 1
+      });
+
+      storeV1.set('user', { name: 'Charlie' });
+      storeV1.destroy();
+
       const storeV2 = new IsomorphicStore(
         'test:migration-persist',
         StorageStrategy.LOCAL,
@@ -76,26 +110,17 @@ describe('IsomorphicStore - Version Migrations', () => {
             {
               from: 1,
               to: 2,
-              migrate: (data: any) => ({
-                displayName: data.name,
-                age: 0
+              migrate: (data: Record<string, any>) => ({
+                user: { displayName: data.user?.name || 'Unknown' }
               })
             }
           ]
         }
       );
 
-      // 读取数据，触发迁移
-      const result = storeV2.get('user');
-      expect(result).toEqual({
-        displayName: 'Bob',
-        age: 0
-      });
-
-      // 销毁 v2 store
+      expect(storeV2.get('user')).toEqual({ displayName: 'Charlie' });
       storeV2.destroy();
 
-      // 创建新的 v2 store，不带迁移规则
       const storeV2Again = new IsomorphicStore(
         'test:migration-persist',
         StorageStrategy.LOCAL,
@@ -104,20 +129,13 @@ describe('IsomorphicStore - Version Migrations', () => {
         }
       );
 
-      // 应该直接返回 v2 格式的数据（因为已经被写回）
-      const result2 = storeV2Again.get('user');
-      expect(result2).toEqual({
-        displayName: 'Bob',
-        age: 0
-      });
-
+      expect(storeV2Again.get('user')).toEqual({ displayName: 'Charlie' });
       storeV2Again.destroy();
     });
   });
 
   describe('Multiple migrations', () => {
     it('should execute migration chain v1 -> v2 -> v3', () => {
-      // 创建 v1 store
       const storeV1 = new IsomorphicStore('test:chain', StorageStrategy.LOCAL, {
         version: 1
       });
@@ -125,7 +143,6 @@ describe('IsomorphicStore - Version Migrations', () => {
       storeV1.set('data', { value: 10 });
       storeV1.destroy();
 
-      // 创建 v3 store with migration chain
       const storeV3 = new IsomorphicStore(
         'test:chain',
         StorageStrategy.LOCAL,
@@ -135,16 +152,18 @@ describe('IsomorphicStore - Version Migrations', () => {
             {
               from: 1,
               to: 2,
-              migrate: (data: any) => ({
-                value: data.value * 2
+              migrate: (data: Record<string, any>) => ({
+                data: { value: (data.data?.value || 0) * 2 }
               })
             },
             {
               from: 2,
               to: 3,
-              migrate: (data: any) => ({
-                value: data.value + 5,
-                timestamp: Date.now()
+              migrate: (data: Record<string, any>) => ({
+                data: {
+                  value: (data.data?.value || 0) + 5,
+                  timestamp: Date.now()
+                }
               })
             }
           ]
@@ -152,7 +171,7 @@ describe('IsomorphicStore - Version Migrations', () => {
       );
 
       const result = storeV3.get('data')! as any;
-      expect(result.value).toBe(25); // (10 * 2) + 5
+      expect(result.value).toBe(25);
       expect(result.timestamp).toBeDefined();
 
       storeV3.destroy();
@@ -163,16 +182,19 @@ describe('IsomorphicStore - Version Migrations', () => {
         {
           from: 1,
           to: 2,
-          migrate: (data: any) => ({ ...data, v2: true })
+          migrate: (data: Record<string, any>) => ({
+            data: { ...data.data, v2: true }
+          })
         },
         {
           from: 2,
           to: 3,
-          migrate: (data: any) => ({ ...data, v3: true })
+          migrate: (data: Record<string, any>) => ({
+            data: { ...data.data, v3: true }
+          })
         }
       ];
 
-      // 创建 v2 store
       const storeV2 = new IsomorphicStore('test:skip', StorageStrategy.LOCAL, {
         version: 2,
         migrations: [migrations[0]]
@@ -181,7 +203,6 @@ describe('IsomorphicStore - Version Migrations', () => {
       storeV2.set('data', { v2: true });
       storeV2.destroy();
 
-      // 创建 v3 store，从 v2 数据读取
       const storeV3 = new IsomorphicStore('test:skip', StorageStrategy.LOCAL, {
         version: 3,
         migrations
@@ -210,8 +231,7 @@ describe('IsomorphicStore - Version Migrations', () => {
       storeV2.destroy();
     });
 
-    it('should return data as-is when new version is lower', () => {
-      // 创建 v2 store
+    it('should return data as-is when stored version is higher', () => {
       const storeV2 = new IsomorphicStore('test:downgrade', StorageStrategy.LOCAL, {
         version: 2
       });
@@ -219,13 +239,11 @@ describe('IsomorphicStore - Version Migrations', () => {
       storeV2.set('user', { v2: true });
       storeV2.destroy();
 
-      // 创建 v1 store（降级）
       const storeV1 = new IsomorphicStore('test:downgrade', StorageStrategy.LOCAL, {
         version: 1
       });
 
       const result = storeV1.get('user');
-      // 版本更高的数据不会被降级迁移
       expect(result).toEqual({ v2: true });
 
       storeV1.destroy();
@@ -234,7 +252,6 @@ describe('IsomorphicStore - Version Migrations', () => {
 
   describe('Error handling', () => {
     it('should throw MigrationError when migration rule is missing', () => {
-      // 创建 v1 store
       const storeV1 = new IsomorphicStore('test:error', StorageStrategy.LOCAL, {
         version: 1
       });
@@ -242,28 +259,22 @@ describe('IsomorphicStore - Version Migrations', () => {
       storeV1.set('data', { value: 1 });
       storeV1.destroy();
 
-      // 创建 v3 store，但只有 v1->v2 的迁移规则
-      const storeV3 = new IsomorphicStore(
-        'test:error',
-        StorageStrategy.LOCAL,
-        {
-          version: 3,
-          migrations: [
-            {
-              from: 1,
-              to: 2,
-              migrate: (data: any) => ({ ...data, v2: true })
-            }
-            // 缺少 v2->v3 的迁移规则
-          ]
-        }
-      );
-
       expect(() => {
-        storeV3.get('data');
+        new IsomorphicStore(
+          'test:error',
+          StorageStrategy.LOCAL,
+          {
+            version: 3,
+            migrations: [
+              {
+                from: 1,
+                to: 2,
+                migrate: (data: Record<string, any>) => ({ ...data, v2: true })
+              }
+            ]
+          }
+        );
       }).toThrow(MigrationError);
-
-      storeV3.destroy();
     });
 
     it('should handle migration function errors', () => {
@@ -271,7 +282,7 @@ describe('IsomorphicStore - Version Migrations', () => {
         version: 1
       });
 
-      storeV1.set('data', { value: 'string' });
+      storeV1.set('data', { value: 'hello' });
       storeV1.destroy();
 
       const storeV2 = new IsomorphicStore(
@@ -283,17 +294,16 @@ describe('IsomorphicStore - Version Migrations', () => {
             {
               from: 1,
               to: 2,
-              migrate: (data: any) => {
-                // 这个迁移函数会抛出错误
-                return data.value.toUpperCase(); // 'string' 是兼容的
-              }
+              migrate: (data: Record<string, any>) => ({
+                data: data.data?.value?.toUpperCase()
+              })
             }
           ]
         }
       );
 
       const result = storeV2.get('data');
-      expect(result).toBe('STRING');
+      expect(result).toBe('HELLO');
 
       storeV2.destroy();
     });
@@ -323,9 +333,11 @@ describe('IsomorphicStore - Version Migrations', () => {
             {
               from: 1,
               to: 2,
-              migrate: (data: any) => ({
-                fullName: `${data.firstName} ${data.lastName}`,
-                bio: data.profile?.bio || ''
+              migrate: (data: Record<string, any>) => ({
+                user: {
+                  fullName: `${data.user?.firstName} ${data.user?.lastName}`,
+                  bio: data.user?.profile?.bio || ''
+                }
               })
             }
           ]
@@ -361,13 +373,13 @@ describe('IsomorphicStore - Version Migrations', () => {
             {
               from: 1,
               to: 2,
-              migrate: (data: any) => {
-                return data.map((item: any) => ({
+              migrate: (data: Record<string, any>) => ({
+                items: (data.items || []).map((item: any) => ({
                   ...item,
                   label: item.name.toUpperCase(),
                   deleted: false
-                }));
-              }
+                }))
+              })
             }
           ]
         }
@@ -402,12 +414,14 @@ describe('IsomorphicStore - Version Migrations', () => {
             {
               from: 1,
               to: 2,
-              migrate: (data: any) => ({
-                theme: data.theme,
-                notificationSettings: {
-                  enabled: data.notifications,
-                  sound: true,
-                  desktop: false
+              migrate: (data: Record<string, any>) => ({
+                config: {
+                  theme: data.config?.theme,
+                  notificationSettings: {
+                    enabled: data.config?.notifications,
+                    sound: true,
+                    desktop: false
+                  }
                 }
               })
             }
@@ -424,6 +438,72 @@ describe('IsomorphicStore - Version Migrations', () => {
           desktop: false
         }
       });
+
+      storeV2.destroy();
+    });
+
+    it('should handle adding new keys during migration', () => {
+      const storeV1 = new IsomorphicStore('test:add-keys', StorageStrategy.LOCAL, {
+        version: 1
+      });
+
+      storeV1.set('user', { name: 'Alice' });
+      storeV1.destroy();
+
+      const storeV2 = new IsomorphicStore(
+        'test:add-keys',
+        StorageStrategy.LOCAL,
+        {
+          version: 2,
+          migrations: [
+            {
+              from: 1,
+              to: 2,
+              migrate: (data: Record<string, any>) => ({
+                ...data,
+                user: { displayName: data.user?.name || 'Unknown' },
+                preferences: { theme: 'light' }
+              })
+            }
+          ]
+        }
+      );
+
+      expect(storeV2.get('user')).toEqual({ displayName: 'Alice' });
+      expect(storeV2.get('preferences')).toEqual({ theme: 'light' });
+
+      storeV2.destroy();
+    });
+
+    it('should handle removing keys during migration', () => {
+      const storeV1 = new IsomorphicStore('test:remove-keys', StorageStrategy.LOCAL, {
+        version: 1
+      });
+
+      storeV1.set('user', { name: 'Bob', temp: true });
+      storeV1.set('oldData', { value: 123 });
+      storeV1.destroy();
+
+      const storeV2 = new IsomorphicStore(
+        'test:remove-keys',
+        StorageStrategy.LOCAL,
+        {
+          version: 2,
+          migrations: [
+            {
+              from: 1,
+              to: 2,
+              migrate: (data: Record<string, any>) => ({
+                user: { name: data.user?.name }
+              })
+            }
+          ]
+        }
+      );
+
+      expect(storeV2.get('user')).toEqual({ name: 'Bob' });
+      expect(storeV2.get('oldData')).toBeNull();
+      expect(storeV2.hasKey('oldData')).toBe(false);
 
       storeV2.destroy();
     });

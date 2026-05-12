@@ -101,6 +101,22 @@ export class SessionStorageAdapter<T = unknown> implements IStorageAdapter<T> {
     return window.sessionStorage.getItem(this.getStorageKey(key)) !== null;
   }
 
+  getAllKeys(): string[] {
+    if (typeof window === 'undefined' || !window.sessionStorage) {
+      return [];
+    }
+
+    const prefix = `${this.namespace}:`;
+    const keys: string[] = [];
+    for (let i = 0; i < window.sessionStorage.length; i++) {
+      const k = window.sessionStorage.key(i);
+      if (k && k.startsWith(prefix)) {
+        keys.push(k.slice(prefix.length));
+      }
+    }
+    return keys;
+  }
+
   setExternalChangeCallback(callback: (event: IsomorphicStoreEvent<T>) => void): void {
     this.externalChangeCallback = callback;
   }

@@ -101,6 +101,22 @@ export class LocalStorageAdapter<T = unknown> implements IStorageAdapter<T> {
     return window.localStorage.getItem(this.getStorageKey(key)) !== null;
   }
 
+  getAllKeys(): string[] {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return [];
+    }
+
+    const prefix = `${this.namespace}:`;
+    const keys: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (k && k.startsWith(prefix)) {
+        keys.push(k.slice(prefix.length));
+      }
+    }
+    return keys;
+  }
+
   setExternalChangeCallback(callback: (event: IsomorphicStoreEvent<T>) => void): void {
     this.externalChangeCallback = callback;
   }

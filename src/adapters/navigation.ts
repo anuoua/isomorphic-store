@@ -227,6 +227,27 @@ export class NavigationStateAdapter<T = unknown> implements IStorageAdapter<T> {
     }
   }
 
+  getAllKeys(): string[] {
+    if (typeof window === 'undefined' || !('navigation' in window)) {
+      return [];
+    }
+
+    const navigation = (window as any).navigation;
+    if (!navigation.currentEntry) {
+      return [];
+    }
+
+    try {
+      const state = navigation.currentEntry.getState?.() || {};
+      if (!state[this.namespace]) {
+        return [];
+      }
+      return Object.keys(state[this.namespace]);
+    } catch {
+      return [];
+    }
+  }
+
   setExternalChangeCallback(callback: (event: IsomorphicStoreEvent<T>) => void): void {
     this.externalChangeCallback = callback;
   }
