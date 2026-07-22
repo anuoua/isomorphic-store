@@ -41,6 +41,7 @@ export interface MigrationRule<T = unknown> {
 export interface IsomorphicStoreOptions<T = unknown> {
   version?: number;                      // 当前版本（默认为 0）
   migrations?: MigrationRule<T>[];       // 迁移规则
+  reuse?: boolean;                       // 为 true 时复用已有命名空间（跳过冲突检测）
 }
 
 /**

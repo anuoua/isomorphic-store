@@ -24,8 +24,8 @@ class NamespaceRegistry {
   /**
    * 注册新的命名空间
    */
-  register(namespace: string, strategy: StorageStrategy): void {
-    if (this.registry.has(namespace)) {
+  register(namespace: string, strategy: StorageStrategy, reuse?: boolean): void {
+    if (this.registry.has(namespace) && !reuse) {
       const existingStrategy = this.registry.get(namespace);
       throw new NamespaceConflictError(namespace, existingStrategy!);
     }

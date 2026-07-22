@@ -33,7 +33,7 @@ IsomorphicStore supports five storage strategies, each representing different li
 
 1. **Strategy Binding**: Each `IsomorphicStore` instance specifies a strategy during construction, and all subsequent operations use this strategy.
 2. **Namespace Isolation**: Each `IsomorphicStore` has its own isolated namespace to prevent data conflicts between different modules or applications.
-3. **Conflict Detection**: The same namespace cannot be occupied by multiple `IsomorphicStore` instances; otherwise, an error is thrown.
+3. **Conflict Detection**: The same namespace cannot be occupied by multiple `IsomorphicStore` instances; otherwise, an error is thrown. Pass `reuse: true` in options to override this check.
 4. **Cross-Storage Coordination**: If your business requires operations across different storage strategies, create multiple `IsomorphicStore` instances and coordinate them manually.
 5. **Automatic Initialization**: The storage location is automatically initialized during construction to ensure data structure integrity.
 
@@ -305,6 +305,7 @@ constructor(
 - `options`:
   - `version` (number): Data version, defaults to 0.
   - `migrations` (MigrationRule[]): Version migration rules.
+  - `reuse` (boolean): If `true`, reuse an already-registered namespace instead of throwing a conflict error.
 
 #### Methods
 

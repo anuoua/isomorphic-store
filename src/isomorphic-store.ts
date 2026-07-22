@@ -34,7 +34,7 @@ export class IsomorphicStore<T extends Record<string, any> = Record<string, any>
     this.namespace = namespace;
     this.currentVersion = options?.version ?? 0;
 
-    globalNamespaceRegistry.register(namespace, strategy);
+    globalNamespaceRegistry.register(namespace, strategy, options?.reuse);
 
     this.adapter = StorageAdapterFactory.create<T[keyof T]>(strategy, namespace);
 

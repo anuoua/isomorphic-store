@@ -22,7 +22,7 @@
 
 1. **策略绑定**：每个 `IsomorphicStore` 实例在构造时指定一个策略，此后该实例的所有操作都使用此策略。
 2. **命名空间隔离**：每个 `IsomorphicStore` 占有独立的命名空间，防止不同模块数据冲突。
-3. **冲突检测**：同一命名空间不能被多个 `IsomorphicStore` 占用，否则抛出错误。
+3. **冲突检测**：同一命名空间不能被多个 `IsomorphicStore` 占用，否则抛出错误。可通过 `reuse` 选项跳过此检测。
 4. **跨存储协调**：若业务需要跨不同存储策略操作，由用户创建多个 `IsomorphicStore` 实例并手动协调。
 5. **自动初始化**：构造时自动初始化存储位置，确保数据结构完整。
 
@@ -111,6 +111,7 @@ interface DataWithVersion<T = unknown> {
 interface IsomorphicStoreOptions<T = unknown> {
   version?: number; // 当前版本（默认为 1）
   migrations?: MigrationRule<T>[]; // 迁移规则
+  reuse?: boolean; // 为 true 时复用已有命名空间（跳过冲突检测）
 }
 ```
 
@@ -184,7 +185,7 @@ constructor(
 
 **参数**：
 
-- `namespace`：数据命名空间，必须唯一。若重复将抛出 `NamespaceConflictError`
+- `namespace`：数据命名空间，必须唯一。若重复将抛出 `NamespaceConflictError`。通过 `options.reuse: true` 可复用已有命名空间。
 - `strategy`：存储策略
 - `options`：可选配置
   - `version`：当前数据版本（默认为 1）

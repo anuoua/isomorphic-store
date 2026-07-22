@@ -33,7 +33,7 @@ IsomorphicStore 支持以下五种存储策略，各代表不同的生命周期�
 
 1. **策略绑定**：每个 `IsomorphicStore` 实例在构造时指定一个策略，此后该实例的所有操作都使用此策略。
 2. **命名空间隔离**：每个 `IsomorphicStore` 占有独立的命名空间，防止不同模块或应用数据冲突。
-3. **冲突检测**：同一命名空间不能被多个 `IsomorphicStore` 占用，否则抛出错误。
+3. **冲突检测**：同一命名空间不能被多个 `IsomorphicStore` 占用，否则抛出错误。可通过 `reuse: true` 选项跳过此检测。
 4. **跨存储协调**：若业务需要跨不同存储策略操作，由用户创建多个 `IsomorphicStore` 实例并手动协调。
 5. **自动初始化**：构造时自动初始化存储位置，确保数据结构完整。
 
@@ -305,6 +305,7 @@ constructor(
 - `options`：
   - `version`（number）：数据版本，默认为 0。
   - `migrations`（MigrationRule[]）：版本迁移规则。
+  - `reuse`（boolean）：为 `true` 时复用已有命名空间，不抛出冲突错误。
 
 #### 方法
 
