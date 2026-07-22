@@ -178,6 +178,8 @@ export class IsomorphicStore<T extends Record<string, any> = Record<string, any>
   set<K extends SchemaKey<T>>(key: K, value: SchemaValue<T, K>): void {
     const oldValue = this.get(key);
 
+    if (oldValue === (value as unknown)) return;
+
     this.adapter.set(key, value as T[keyof T]);
 
     this.emitEvent({
@@ -197,6 +199,8 @@ export class IsomorphicStore<T extends Record<string, any> = Record<string, any>
 
   remove<K extends SchemaKey<T>>(key: K): void {
     const oldValue = this.get(key);
+
+    if (oldValue === null) return;
 
     this.adapter.remove(key);
 

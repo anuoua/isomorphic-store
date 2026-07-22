@@ -218,6 +218,55 @@ describe('Storage Adapters', () => {
       adapter.remove('key1');
       expect(window.sessionStorage.getItem('testns:key1')).toBeNull();
     });
+
+    it('should notify other adapter instances via custom event on set', () => {
+      const adapterA = new SessionStorageAdapter<string>('testns');
+      const adapterB = new SessionStorageAdapter<string>('testns');
+
+      let eventKey: string | undefined;
+      let eventNewValue: string | undefined;
+      adapterB.setExternalChangeCallback((event) => {
+        eventKey = event.key;
+        eventNewValue = event.newValue as string | undefined;
+      });
+
+      adapterA.set('key1', 'value1');
+
+      expect(eventKey).toBe('key1');
+      expect(eventNewValue).toBe('value1');
+    });
+
+    it('should notify other adapter instances via custom event on remove', () => {
+      const adapterA = new SessionStorageAdapter<string>('testns');
+      const adapterB = new SessionStorageAdapter<string>('testns');
+
+      adapterA.set('key1', 'value1');
+
+      let eventKey: string | undefined;
+      let eventType: string | undefined;
+      adapterB.setExternalChangeCallback((event) => {
+        eventKey = event.key;
+        eventType = event.type;
+      });
+
+      adapterA.remove('key1');
+
+      expect(eventKey).toBe('key1');
+      expect(eventType).toBe('remove');
+    });
+
+    it('should not notify self via custom event (no double-fire)', () => {
+      const adapter = new SessionStorageAdapter<string>('testns');
+
+      let callCount = 0;
+      adapter.setExternalChangeCallback(() => {
+        callCount++;
+      });
+
+      adapter.set('key1', 'value1');
+
+      expect(callCount).toBe(0);
+    });
   });
 
   describe('HistoryStateAdapter', () => {
@@ -263,6 +312,55 @@ describe('Storage Adapters', () => {
 
       expect(adapter.get('key1')).toBeNull();
       expect(adapter.get('key2')).toBeNull();
+    });
+
+    it('should notify other adapter instances via custom event on set', () => {
+      const adapterA = new HistoryStateAdapter<string>('test:ns-x1');
+      const adapterB = new HistoryStateAdapter<string>('test:ns-x1');
+
+      let eventKey: string | undefined;
+      let eventNewValue: string | undefined;
+      adapterB.setExternalChangeCallback((event) => {
+        eventKey = event.key;
+        eventNewValue = event.newValue as string | undefined;
+      });
+
+      adapterA.set('key1', 'value1');
+
+      expect(eventKey).toBe('key1');
+      expect(eventNewValue).toBe('value1');
+    });
+
+    it('should notify other adapter instances via custom event on remove', () => {
+      const adapterA = new HistoryStateAdapter<string>('test:ns-x2');
+      const adapterB = new HistoryStateAdapter<string>('test:ns-x2');
+
+      adapterA.set('key1', 'value1');
+
+      let eventKey: string | undefined;
+      let eventType: string | undefined;
+      adapterB.setExternalChangeCallback((event) => {
+        eventKey = event.key;
+        eventType = event.type;
+      });
+
+      adapterA.remove('key1');
+
+      expect(eventKey).toBe('key1');
+      expect(eventType).toBe('remove');
+    });
+
+    it('should not notify self via custom event (no double-fire)', () => {
+      const adapter = new HistoryStateAdapter<string>('test:ns-x3');
+
+      let callCount = 0;
+      adapter.setExternalChangeCallback(() => {
+        callCount++;
+      });
+
+      adapter.set('key1', 'value1');
+
+      expect(callCount).toBe(0);
     });
   });
 

@@ -1,28 +1,70 @@
 import { type IStorageAdapter, type IsomorphicStoreEvent } from '../types';
 import { SerializationError, UnsupportedStrategyError } from '../errors';
 
-/**
- * Navigation State 适配器
- * 使用 Navigation API 的 currentEntry.state 存储数据（新 API）
- */
+const INTERNAL_EVENT = '__isomorphic_store_change__';
+
+interface InternalChangeDetail {
+  instanceId: string;
+  namespace: string;
+  key: string;
+  type: 'set' | 'remove';
+  newValue?: string;
+}
+
 export class NavigationStateAdapter<T = unknown> implements IStorageAdapter<T> {
   private namespace: string;
   private externalChangeCallback?: (event: IsomorphicStoreEvent<T>) => void;
   private lastState: Record<string, any> = {};
+  private instanceId: string;
+  private boundInternalHandler: (event: CustomEvent<InternalChangeDetail>) => void;
 
   constructor(namespace: string) {
     this.namespace = namespace;
+    this.instanceId = Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+    this.boundInternalHandler = (event: CustomEvent<InternalChangeDetail>) => {
+      const detail = event.detail;
+      if (!detail) return;
+      if (detail.instanceId === this.instanceId) return;
+      if (detail.namespace !== this.namespace) return;
+      if (!this.externalChangeCallback) return;
+
+      this.externalChangeCallback({
+        type: detail.type as any,
+        key: detail.key,
+        newValue: detail.newValue !== undefined ? JSON.parse(detail.newValue) : undefined,
+        oldValue: undefined,
+        namespace: this.namespace,
+        timestamp: Date.now(),
+        source: this
+      });
+    };
 
     if (typeof window !== 'undefined') {
       this.initializeState();
 
-      // 监听 navigate 事件
       if ('navigation' in window) {
         (window as any).navigation.addEventListener('navigate', () => {
           this.detectExternalChanges();
         });
       }
+
+      window.addEventListener(INTERNAL_EVENT, this.boundInternalHandler as EventListener);
     }
+  }
+
+  private dispatchInternal(key: string, type: 'set' | 'remove', newValue?: string): void {
+    if (typeof window === 'undefined') return;
+    const detail: InternalChangeDetail = {
+      instanceId: this.instanceId,
+      namespace: this.namespace,
+      key,
+      type
+    };
+    if (newValue !== undefined) {
+      detail.newValue = newValue;
+    }
+    window.dispatchEvent(new CustomEvent<InternalChangeDetail>(INTERNAL_EVENT, { detail }));
   }
 
   private initializeState(): void {
@@ -156,6 +198,12 @@ export class NavigationStateAdapter<T = unknown> implements IStorageAdapter<T> {
 
       // 更新缓存
       this.lastState[key] = value;
+
+      try {
+        this.dispatchInternal(key, 'set', JSON.stringify(value));
+      } catch {
+        // ignore serialization errors in event dispatch
+      }
     } catch (error) {
       throw new SerializationError(key, (error as Error).message);
     }
@@ -179,6 +227,7 @@ export class NavigationStateAdapter<T = unknown> implements IStorageAdapter<T> {
 
         // 更新缓存
         delete this.lastState[key];
+        this.dispatchInternal(key, 'remove');
       }
     } catch {
       // Navigation API 操作失败
