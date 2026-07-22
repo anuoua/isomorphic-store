@@ -122,6 +122,69 @@ describe('Storage Adapters', () => {
       const adapter2 = new LocalStorageAdapter<string>('testns');
       expect(adapter2.get('key1')).toBe('value1');
     });
+
+    it('should notify other adapter instances via custom event on set', () => {
+      const adapterA = new LocalStorageAdapter<string>('testns');
+      const adapterB = new LocalStorageAdapter<string>('testns');
+
+      let eventKey: string | undefined;
+      let eventNewValue: string | undefined;
+      adapterB.setExternalChangeCallback((event) => {
+        eventKey = event.key;
+        eventNewValue = event.newValue as string | undefined;
+      });
+
+      adapterA.set('key1', 'value1');
+
+      expect(eventKey).toBe('key1');
+      expect(eventNewValue).toBe('value1');
+    });
+
+    it('should notify other adapter instances via custom event on remove', () => {
+      const adapterA = new LocalStorageAdapter<string>('testns');
+      const adapterB = new LocalStorageAdapter<string>('testns');
+
+      adapterA.set('key1', 'value1');
+
+      let eventKey: string | undefined;
+      let eventType: string | undefined;
+      adapterB.setExternalChangeCallback((event) => {
+        eventKey = event.key;
+        eventType = event.type;
+      });
+
+      adapterA.remove('key1');
+
+      expect(eventKey).toBe('key1');
+      expect(eventType).toBe('remove');
+    });
+
+    it('should not notify self via custom event (no double-fire)', () => {
+      const adapter = new LocalStorageAdapter<string>('testns');
+
+      let callCount = 0;
+      adapter.setExternalChangeCallback(() => {
+        callCount++;
+      });
+
+      adapter.set('key1', 'value1');
+
+      expect(callCount).toBe(0);
+    });
+
+    it('should filter custom events by namespace', () => {
+      const adapterA = new LocalStorageAdapter<string>('ns1');
+      const adapterB = new LocalStorageAdapter<string>('ns2');
+
+      let callCount = 0;
+      adapterB.setExternalChangeCallback(() => {
+        callCount++;
+      });
+
+      adapterA.set('key1', 'value1');
+
+      expect(callCount).toBe(0);
+    });
   });
 
   describe('SessionStorageAdapter', () => {

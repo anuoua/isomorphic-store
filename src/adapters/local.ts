@@ -1,40 +1,85 @@
 import { type IStorageAdapter, type IsomorphicStoreEvent } from '../types';
 import { SerializationError, StorageQuotaExceededError } from '../errors';
 
-/**
- * localStorage 适配器
- */
+const INTERNAL_EVENT = '__isomorphic_store_change__';
+
+interface InternalChangeDetail {
+  instanceId: string;
+  namespace: string;
+  key: string;
+  type: 'set' | 'remove';
+  newValue?: string;
+}
+
 export class LocalStorageAdapter<T = unknown> implements IStorageAdapter<T> {
   private namespace: string;
   private externalChangeCallback?: (event: IsomorphicStoreEvent<T>) => void;
+  private instanceId: string;
+  private boundStorageHandler: (event: StorageEvent) => void;
+  private boundInternalHandler: (event: CustomEvent<InternalChangeDetail>) => void;
 
   constructor(namespace: string) {
     this.namespace = namespace;
+    this.instanceId = Math.random().toString(36).slice(2) + Date.now().toString(36);
 
-    // 监听其他标签页的 storage 事件
-    if (typeof window !== 'undefined') {
-      window.addEventListener('storage', (event) => {
-        if (event.key && this.externalChangeCallback) {
-          const prefix = `${this.namespace}:`;
-          if (!event.key.startsWith(prefix)) return;
+    this.boundStorageHandler = (event: StorageEvent) => {
+      if (event.key && this.externalChangeCallback) {
+        const prefix = `${this.namespace}:`;
+        if (!event.key.startsWith(prefix)) return;
 
-          const rawKey = event.key.slice(prefix.length);
-          this.externalChangeCallback({
-            type: 'set' as any,
-            key: rawKey,
-            newValue: event.newValue ? JSON.parse(event.newValue) : undefined,
-            oldValue: event.oldValue ? JSON.parse(event.oldValue) : undefined,
-            namespace: this.namespace,
-            timestamp: Date.now(),
-            source: this
-          });
-        }
+        const rawKey = event.key.slice(prefix.length);
+        this.externalChangeCallback({
+          type: 'set' as any,
+          key: rawKey,
+          newValue: event.newValue ? JSON.parse(event.newValue) : undefined,
+          oldValue: event.oldValue ? JSON.parse(event.oldValue) : undefined,
+          namespace: this.namespace,
+          timestamp: Date.now(),
+          source: this
+        });
+      }
+    };
+
+    this.boundInternalHandler = (event: CustomEvent<InternalChangeDetail>) => {
+      const detail = event.detail;
+      if (!detail) return;
+      if (detail.instanceId === this.instanceId) return;
+      if (detail.namespace !== this.namespace) return;
+      if (!this.externalChangeCallback) return;
+
+      this.externalChangeCallback({
+        type: detail.type as any,
+        key: detail.key,
+        newValue: detail.newValue !== undefined ? JSON.parse(detail.newValue) : undefined,
+        oldValue: undefined,
+        namespace: this.namespace,
+        timestamp: Date.now(),
+        source: this
       });
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', this.boundStorageHandler);
+      window.addEventListener(INTERNAL_EVENT, this.boundInternalHandler as EventListener);
     }
   }
 
   private getStorageKey(key: string): string {
     return `${this.namespace}:${key}`;
+  }
+
+  private dispatchInternal(key: string, type: 'set' | 'remove', newValue?: string): void {
+    if (typeof window === 'undefined') return;
+    const detail: InternalChangeDetail = {
+      instanceId: this.instanceId,
+      namespace: this.namespace,
+      key,
+      type
+    };
+    if (newValue !== undefined) {
+      detail.newValue = newValue;
+    }
+    window.dispatchEvent(new CustomEvent<InternalChangeDetail>(INTERNAL_EVENT, { detail }));
   }
 
   get(key: string): T | null {
@@ -61,6 +106,7 @@ export class LocalStorageAdapter<T = unknown> implements IStorageAdapter<T> {
     try {
       const serialized = JSON.stringify(value);
       window.localStorage.setItem(this.getStorageKey(key), serialized);
+      this.dispatchInternal(key, 'set', serialized);
     } catch (error) {
       if (error instanceof DOMException && error.name === 'QuotaExceededError') {
         throw new StorageQuotaExceededError('', 'localStorage');
@@ -74,6 +120,7 @@ export class LocalStorageAdapter<T = unknown> implements IStorageAdapter<T> {
       return;
     }
     window.localStorage.removeItem(this.getStorageKey(key));
+    this.dispatchInternal(key, 'remove');
   }
 
   clear(): void {
